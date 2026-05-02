@@ -78,8 +78,9 @@ export const Landing: React.FC = () => {
 
       {/* Search + Events */}
       <div id="search-grid" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-30">
-        <div className="mb-10">
-          <div className="relative max-w-xl">
+        <h2 className="text-3xl font-bold text-white text-center mb-10">Events</h2>
+        <div className="mb-10 flex justify-center">
+          <div className="relative max-w-xl w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4" />
             <input
               type="text"
