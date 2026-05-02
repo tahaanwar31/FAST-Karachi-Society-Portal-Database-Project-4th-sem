@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-brand-primary: #3b82f6;
+  --color-brand-secondary: #60a5fa;
+}
+
+@layer base {
+  body {
+    @apply bg-zinc-950 text-zinc-100 antialiased selection:bg-blue-500/30 min-h-screen relative overflow-x-hidden;
+  }
+}
+
+/* Background */
+.mesh-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.06), transparent 70%);
+}
+
+/* Surfaces */
+.glass {
+  @apply bg-white/[0.03] border border-white/[0.06] shadow-sm;
+}
+
+.glass-card {
+  @apply bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] transition-colors duration-200;
+}
+
+/* Buttons */
+.btn-primary {
+  @apply bg-blue-500 text-white px-5 py-2.5 rounded-lg font-semibold text-sm hover:bg-blue-400 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply border border-white/[0.10] text-zinc-300 px-5 py-2.5 rounded-lg font-medium text-sm hover:bg-white/[0.05] hover:border-white/[0.15] transition-colors;
+}
+
+.btn-danger {
+  @apply bg-rose-500/10 text-rose-400 border border-rose-500/20 px-4 py-2 rounded-lg font-medium text-sm hover:bg-rose-500/20 transition-colors;
+}
