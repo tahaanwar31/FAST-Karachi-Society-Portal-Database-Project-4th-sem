@@ -4,6 +4,8 @@
 
 **A full-stack web application to digitize and streamline society management at FAST NUCES Karachi.**
 
+**Live Demo:** [fast-karachi-society-portal-database.onrender.com](https://fast-karachi-society-portal-database.onrender.com/)
+
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white)](https://react.dev)
 [![Express](https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=node.js&logoColor=white)](https://expressjs.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://neon.tech)
