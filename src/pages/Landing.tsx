@@ -35,9 +35,11 @@ export const Landing: React.FC = () => {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-10"
+            className="flex justify-center mb-10"
           >
-            FAST NUCES Karachi
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium">
+              FAST NUCES Karachi
+            </span>
           </motion.div>
 
           <motion.h1
