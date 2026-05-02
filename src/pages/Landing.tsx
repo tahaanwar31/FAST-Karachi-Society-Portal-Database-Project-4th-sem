@@ -29,7 +29,7 @@ export const Landing: React.FC = () => {
   return (
     <div className="pb-20">
       {/* Hero */}
-      <section className="relative min-h-[85vh] flex items-center justify-center px-4 overflow-hidden pt-20">
+      <section className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden py-32">
         <div className="max-w-7xl w-full text-center relative z-20">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
