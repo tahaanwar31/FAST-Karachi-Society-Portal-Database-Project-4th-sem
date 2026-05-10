@@ -29,7 +29,7 @@ export const AdminDashboard: React.FC = () => {
   const [assigningRole, setAssigningRole] = useState<{ socId: string, roleType: 'HEAD' | 'CO_HEAD' } | null>(null);
 
   // Dedicated tables state
-  const [activeTab, setActiveTab] = useState<'events' | 'admins' | 'heads' | 'coheads' | 'members'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'admins' | 'heads' | 'coheads' | 'members' | 'societies' | 'venues'>('events');
   const [admins, setAdmins] = useState([]);
   const [heads, setHeads] = useState([]);
   const [coHeads, setCoHeads] = useState([]);
@@ -490,7 +490,7 @@ export const AdminDashboard: React.FC = () => {
                   <h3 className="text-lg font-semibold text-white">User Management</h3>
                 </div>
                 <div className="flex bg-white/[0.03] p-1 rounded-lg border border-white/[0.06]">
-                  {(['events', 'admins', 'heads', 'coheads', 'members'] as const).map(tab => (
+                  {(['events', 'admins', 'heads', 'coheads', 'members', 'societies', 'venues'] as const).map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${activeTab === tab ? 'bg-blue-500 text-white' : 'text-zinc-500 hover:text-white'}`}>
                       {tab === 'coheads' ? 'Co-Heads' : tab === 'members' ? 'Members' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                     </button>
@@ -612,6 +612,66 @@ export const AdminDashboard: React.FC = () => {
                             <td className="px-6 py-3 text-sm text-zinc-400">{sm.department || '-'}</td>
                             <td className="px-6 py-3 text-sm text-zinc-400">{sm.semester || '-'}</td>
                             <td className="px-6 py-3 text-sm text-zinc-500 font-mono">{sm.joined_date || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'societies' && (
+                <div className="glass rounded-xl overflow-hidden">
+                  <div className="px-6 py-3 bg-white/[0.02] border-b border-white/[0.06]">
+                    <span className="text-xs text-zinc-500">{societies.length} societies</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead><tr className="border-b border-white/[0.06] bg-white/[0.01]">
+                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Name</th>
+                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Category</th>
+                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Est.</th>
+                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Head</th>
+                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Co-Head</th>
+                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Status</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-white/[0.04]">
+                        {societies.map((s: any) => (
+                          <tr key={s.id} className="hover:bg-white/[0.02] transition-colors">
+                            <td className="px-6 py-3 text-sm text-white font-medium">{s.name}</td>
+                            <td className="px-6 py-3 text-sm text-blue-400">{s.category || '-'}</td>
+                            <td className="px-6 py-3 text-sm text-zinc-400">{s.established_year || '-'}</td>
+                            <td className="px-6 py-3 text-sm text-zinc-400">{s.head_name || 'Unassigned'}</td>
+                            <td className="px-6 py-3 text-sm text-zinc-400">{s.co_head_name || 'Unassigned'}</td>
+                            <td className="px-6 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${s.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>{s.status || 'APPROVED'}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'venues' && (
+                <div className="glass rounded-xl overflow-hidden">
+                  <div className="px-6 py-3 bg-white/[0.02] border-b border-white/[0.06]">
+                    <span className="text-xs text-zinc-500">{venues.length} venues</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead><tr className="border-b border-white/[0.06] bg-white/[0.01]">
+                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Name</th>
+                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Location</th>
+                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Capacity</th>
+                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Availability</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-white/[0.04]">
+                        {venues.map((v: any) => (
+                          <tr key={v.id} className="hover:bg-white/[0.02] transition-colors">
+                            <td className="px-6 py-3 text-sm text-white font-medium">{v.name}</td>
+                            <td className="px-6 py-3 text-sm text-zinc-400">{v.location}</td>
+                            <td className="px-6 py-3 text-sm text-zinc-400">{v.capacity}</td>
+                            <td className="px-6 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium border ${v.availability !== 'NO' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>{v.availability !== 'NO' ? 'Available' : 'Unavailable'}</span></td>
                           </tr>
                         ))}
                       </tbody>
