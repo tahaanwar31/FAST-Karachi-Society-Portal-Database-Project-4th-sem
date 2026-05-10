@@ -103,27 +103,24 @@ if (isPostgres) {
 
 // --- Schema Initialization ---
 async function initDb() {
-  const schema = `
-    CREATE TABLE IF NOT EXISTS users (
+  // Create tables one by one — pg.query() can't handle multi-statement strings reliably
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'STUDENT',
       roll_no TEXT,
-      phone TEXT,
-      CHECK(role IN ('ADMIN', 'SOCIETY_HEAD', 'STUDENT'))
-    );
-
-    CREATE TABLE IF NOT EXISTS venues (
+      phone TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS venues (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       location TEXT NOT NULL,
-      capacity INTEGER NOT NULL,
-      CHECK(capacity > 0)
-    );
-
-    CREATE TABLE IF NOT EXISTS societies (
+      capacity INTEGER NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS societies (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL UNIQUE,
       description TEXT,
@@ -131,15 +128,12 @@ async function initDb() {
       established_year INTEGER,
       contact_email TEXT,
       vision TEXT,
-      head_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-      co_head_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      head_id TEXT,
+      co_head_id TEXT,
       status TEXT DEFAULT 'APPROVED',
-      admin_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-      CHECK(status IN ('APPROVED', 'PENDING', 'REJECTED')),
-      CHECK(category IS NULL OR category IN ('TECHNICAL', 'CULTURAL', 'LITERARY', 'SPORTS', 'SOCIAL'))
-    );
-
-    CREATE TABLE IF NOT EXISTS events (
+      admin_id TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS events (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT,
@@ -147,26 +141,21 @@ async function initDb() {
       time TEXT NOT NULL,
       end_time TEXT,
       capacity INTEGER NOT NULL,
-      society_id TEXT NOT NULL REFERENCES societies(id) ON DELETE CASCADE,
-      venue_id TEXT NOT NULL REFERENCES venues(id) ON DELETE RESTRICT,
+      society_id TEXT NOT NULL,
+      venue_id TEXT NOT NULL,
       head_email TEXT,
       status TEXT NOT NULL DEFAULT 'PENDING',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      CHECK(status IN ('PENDING', 'PUBLISHED', 'CANCELLED')),
-      CHECK(capacity > 0)
-    );
-
-    CREATE TABLE IF NOT EXISTS registrations (
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS registrations (
       id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL,
+      event_id TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'REGISTERED',
       registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(user_id, event_id),
-      CHECK(status IN ('REGISTERED', 'ATTENDED', 'CANCELLED'))
-    );
-
-    CREATE TABLE IF NOT EXISTS admins (
+      UNIQUE(user_id, event_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS admins (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
@@ -174,63 +163,56 @@ async function initDb() {
       department TEXT,
       access_level TEXT DEFAULT 'FULL',
       phone TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      CHECK(access_level IN ('FULL', 'LIMITED'))
-    );
-
-    CREATE TABLE IF NOT EXISTS heads (
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS heads (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      society_id TEXT REFERENCES societies(id) ON DELETE SET NULL,
+      society_id TEXT,
       department TEXT,
       phone TEXT,
       tenure_start TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS co_heads (
+    )`,
+    `CREATE TABLE IF NOT EXISTS co_heads (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      society_id TEXT REFERENCES societies(id) ON DELETE SET NULL,
+      society_id TEXT,
       department TEXT,
       phone TEXT,
       tenure_start TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS student_members (
+    )`,
+    `CREATE TABLE IF NOT EXISTS student_members (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      society_id TEXT REFERENCES societies(id) ON DELETE SET NULL,
+      society_id TEXT,
       roll_no TEXT,
       department TEXT,
       semester INTEGER,
       phone TEXT,
       joined_date TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS feedback (
+    )`,
+    `CREATE TABLE IF NOT EXISTS feedback (
       id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL,
+      event_id TEXT NOT NULL,
       rating INTEGER NOT NULL,
       comments TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(user_id, event_id),
-      CHECK(rating >= 1 AND rating <= 5)
-    );
-
-    CREATE TABLE IF NOT EXISTS event_requests (
+      UNIQUE(user_id, event_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS event_requests (
       id TEXT PRIMARY KEY,
-      event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-      head_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      event_id TEXT NOT NULL,
+      head_id TEXT NOT NULL,
       request_type TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'PENDING',
       reason TEXT,
@@ -243,29 +225,41 @@ async function initDb() {
       proposed_capacity INTEGER,
       proposed_venue_id TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      resolved_at TIMESTAMP,
-      CHECK(request_type IN ('UPDATE', 'DELETE')),
-      CHECK(status IN ('PENDING', 'APPROVED', 'REJECTED'))
-    );
-  `;
-
-  await db.exec(schema);
-
-  // Migration: add columns that may be missing on older databases
-  // (on fresh DB these are already in CREATE TABLE, so ALTER will fail silently)
-  const migrations = [
-    "ALTER TABLE societies ADD COLUMN status TEXT DEFAULT 'APPROVED'",
-    "ALTER TABLE societies ADD COLUMN admin_id TEXT",
-    "ALTER TABLE events ADD COLUMN end_time TEXT",
-    "ALTER TABLE event_requests ADD COLUMN proposed_end_time TEXT",
+      resolved_at TIMESTAMP
+    )`
   ];
-  for (const sql of migrations) {
-    try { await db.exec(sql); } catch { /* column already exists */ }
-  }
 
-  // Migration: add foreign key constraints (PostgreSQL only)
+  // Create tables one by one
+  for (const sql of tables) {
+    try {
+      await db.exec(sql);
+    } catch (err) {
+      console.error('CREATE TABLE error:', err);
+    }
+  }
+  console.log('--- DB: Tables created ---');
+
+  // Add CHECK constraints (separate so they don't block table creation)
   if (isPostgres) {
-    const fkConstraints = [
+    const checks = [
+      "ALTER TABLE users ADD CONSTRAINT chk_users_role CHECK (role IN ('ADMIN', 'SOCIETY_HEAD', 'STUDENT'))",
+      "ALTER TABLE venues ADD CONSTRAINT chk_venues_capacity CHECK (capacity > 0)",
+      "ALTER TABLE societies ADD CONSTRAINT chk_societies_status CHECK (status IN ('APPROVED', 'PENDING', 'REJECTED'))",
+      "ALTER TABLE societies ADD CONSTRAINT chk_societies_category CHECK (category IS NULL OR category IN ('TECHNICAL', 'CULTURAL', 'LITERARY', 'SPORTS', 'SOCIAL'))",
+      "ALTER TABLE events ADD CONSTRAINT chk_events_status CHECK (status IN ('PENDING', 'PUBLISHED', 'CANCELLED'))",
+      "ALTER TABLE events ADD CONSTRAINT chk_events_capacity CHECK (capacity > 0)",
+      "ALTER TABLE registrations ADD CONSTRAINT chk_regs_status CHECK (status IN ('REGISTERED', 'ATTENDED', 'CANCELLED'))",
+      "ALTER TABLE admins ADD CONSTRAINT chk_admins_access CHECK (access_level IN ('FULL', 'LIMITED'))",
+      "ALTER TABLE feedback ADD CONSTRAINT chk_fb_rating CHECK (rating >= 1 AND rating <= 5)",
+      "ALTER TABLE event_requests ADD CONSTRAINT chk_er_type CHECK (request_type IN ('UPDATE', 'DELETE'))",
+      "ALTER TABLE event_requests ADD CONSTRAINT chk_er_status CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED'))",
+    ];
+    for (const sql of checks) {
+      try { await db.exec(sql); } catch { /* already exists */ }
+    }
+
+    // Add FK constraints
+    const fks = [
       "ALTER TABLE societies ADD CONSTRAINT fk_societies_head FOREIGN KEY (head_id) REFERENCES users(id) ON DELETE SET NULL",
       "ALTER TABLE societies ADD CONSTRAINT fk_societies_cohead FOREIGN KEY (co_head_id) REFERENCES users(id) ON DELETE SET NULL",
       "ALTER TABLE societies ADD CONSTRAINT fk_societies_admin FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL",
@@ -281,27 +275,10 @@ async function initDb() {
       "ALTER TABLE co_heads ADD CONSTRAINT fk_coheads_society FOREIGN KEY (society_id) REFERENCES societies(id) ON DELETE SET NULL",
       "ALTER TABLE student_members ADD CONSTRAINT fk_sm_society FOREIGN KEY (society_id) REFERENCES societies(id) ON DELETE SET NULL",
     ];
-    for (const sql of fkConstraints) {
-      try { await db.exec(sql); } catch { /* constraint may already exist */ }
+    for (const sql of fks) {
+      try { await db.exec(sql); } catch { /* already exists */ }
     }
-
-    // CHECK constraints for data integrity
-    const checkConstraints = [
-      "ALTER TABLE users ADD CONSTRAINT chk_users_role CHECK (role IN ('ADMIN', 'SOCIETY_HEAD', 'STUDENT'))",
-      "ALTER TABLE venues ADD CONSTRAINT chk_venues_capacity CHECK (capacity > 0)",
-      "ALTER TABLE societies ADD CONSTRAINT chk_societies_status CHECK (status IN ('APPROVED', 'PENDING', 'REJECTED'))",
-      "ALTER TABLE societies ADD CONSTRAINT chk_societies_category CHECK (category IS NULL OR category IN ('TECHNICAL', 'CULTURAL', 'LITERARY', 'SPORTS', 'SOCIAL'))",
-      "ALTER TABLE events ADD CONSTRAINT chk_events_status CHECK (status IN ('PENDING', 'PUBLISHED', 'CANCELLED'))",
-      "ALTER TABLE events ADD CONSTRAINT chk_events_capacity CHECK (capacity > 0)",
-      "ALTER TABLE registrations ADD CONSTRAINT chk_regs_status CHECK (status IN ('REGISTERED', 'ATTENDED', 'CANCELLED'))",
-      "ALTER TABLE admins ADD CONSTRAINT chk_admins_access CHECK (access_level IN ('FULL', 'LIMITED'))",
-      "ALTER TABLE feedback ADD CONSTRAINT chk_fb_rating CHECK (rating >= 1 AND rating <= 5)",
-      "ALTER TABLE event_requests ADD CONSTRAINT chk_er_type CHECK (request_type IN ('UPDATE', 'DELETE'))",
-      "ALTER TABLE event_requests ADD CONSTRAINT chk_er_status CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED'))",
-    ];
-    for (const sql of checkConstraints) {
-      try { await db.exec(sql); } catch { /* constraint may already exist */ }
-    }
+    console.log('--- DB: Constraints applied ---');
   }
 
   // Seed data
@@ -501,8 +478,18 @@ app.post('/api/auth/logout', (req, res) => {
 app.get('/api/auth/me', async (req, res) => {
   const userId = req.cookies.userId;
   if (!userId) return res.json(null);
-  const user = await db.prepare('SELECT id, name, email, role, roll_no, phone FROM users WHERE id = ?').get(userId);
-  res.json(user || null);
+  try {
+    const user = await db.prepare('SELECT id, name, email, role, roll_no, phone FROM users WHERE id = ?').get(userId);
+    if (!user) {
+      // User doesn't exist — clear stale cookie
+      res.clearCookie('userId', { path: '/', httpOnly: true, sameSite: 'lax', secure: isPostgres });
+      return res.json(null);
+    }
+    res.json(user);
+  } catch {
+    res.clearCookie('userId', { path: '/', httpOnly: true, sameSite: 'lax', secure: isPostgres });
+    res.json(null);
+  }
 });
 
 app.get('/api/societies', async (req, res) => {
@@ -1093,8 +1080,8 @@ async function startServer() {
     await initDb();
     console.log('--- SYSTEM: Database Initialized Successfully ---');
   } catch (err) {
-    console.error('--- SYSTEM: Database Initialization Failed! ---', err);
-    // Continue anyway to let Vite serve, but API will fail
+    console.error('--- SYSTEM: Database Initialization FAILED! ---', err);
+    process.exit(1);
   }
 
   if (process.env.NODE_ENV !== 'production') {
