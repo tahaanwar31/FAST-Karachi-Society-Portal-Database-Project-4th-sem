@@ -7,7 +7,9 @@ export const SocietyHeadDashboard: React.FC = () => {
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', date: '', time: '', capacity: 100, venue_id: '' });
+  const [formData, setFormData] = useState({ title: '', description: '', date: '', time: '', end_time: '', capacity: 100, venue_id: '' });
+  const [venueAvailability, setVenueAvailability] = useState<{ start: string, end: string }[]>([]);
+  const [venueBookings, setVenueBookings] = useState<any[]>([]);
 
   // Participants & Attendance
   const [showParticipants, setShowParticipants] = useState<string | null>(null);
@@ -22,7 +24,7 @@ export const SocietyHeadDashboard: React.FC = () => {
   // Event Requests
   const [showEditRequest, setShowEditRequest] = useState<string | null>(null);
   const [showDeleteRequest, setShowDeleteRequest] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ title: '', description: '', date: '', time: '', capacity: 100, venue_id: '' });
+  const [editForm, setEditForm] = useState({ title: '', description: '', date: '', time: '', end_time: '', capacity: 100, venue_id: '' });
   const [deleteReason, setDeleteReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,7 +59,7 @@ export const SocietyHeadDashboard: React.FC = () => {
     if (res.ok) {
       setShowModal(false);
       fetchData();
-      setFormData({ title: '', description: '', date: '', time: '', capacity: 100, venue_id: '' });
+      setFormData({ title: '', description: '', date: '', time: '', end_time: '', capacity: 100, venue_id: '' });
     }
   };
 
@@ -101,6 +103,7 @@ export const SocietyHeadDashboard: React.FC = () => {
       description: event.description || '',
       date: event.date,
       time: event.time,
+      end_time: event.end_time || '',
       capacity: event.capacity,
       venue_id: event.venue_id
     });
@@ -136,7 +139,23 @@ export const SocietyHeadDashboard: React.FC = () => {
 
   const totalRegs = events.reduce((acc: number, e: any) => acc + Number(e.reg_count || 0), 0);
   const avgRegs = events.length > 0 ? (totalRegs / events.length).toFixed(1) : '0';
-  const availableVenues = venues.filter((v: any) => v.availability !== 'NO');
+  const availableVenues = venues;
+
+  // Fetch venue availability when date or venue changes
+  const fetchVenueAvailability = async (venueId: string, date: string) => {
+    if (!venueId || !date) { setVenueAvailability([]); setVenueBookings([]); return; }
+    try {
+      const res = await fetch(`/api/venues/${venueId}/availability?date=${date}`);
+      const data = await res.json();
+      setVenueAvailability(data.available_slots || []);
+      setVenueBookings(data.bookings || []);
+    } catch { setVenueAvailability([]); setVenueBookings([]); }
+  };
+
+  useEffect(() => {
+    if (formData.venue_id && formData.date) fetchVenueAvailability(formData.venue_id, formData.date);
+    else { setVenueAvailability([]); setVenueBookings([]); }
+  }, [formData.venue_id, formData.date]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -256,7 +275,7 @@ export const SocietyHeadDashboard: React.FC = () => {
                     <div className="flex items-center gap-1.5 text-sm text-zinc-300 mb-0.5">
                       <MapPin className="w-3.5 h-3.5 text-blue-400" />{event.venue_name}
                     </div>
-                    <div className="text-xs text-zinc-500">{event.date} at {event.time}</div>
+                    <div className="text-xs text-zinc-500">{event.date} | {event.time}{event.end_time ? ` — ${event.end_time}` : ''}</div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="w-24 bg-white/[0.06] h-1.5 rounded-full overflow-hidden mb-1">
@@ -342,14 +361,18 @@ export const SocietyHeadDashboard: React.FC = () => {
                   <label className="text-sm font-medium text-zinc-400 mb-1.5 block">Description</label>
                   <textarea required placeholder="Describe the event..." className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 transition-all text-sm h-28" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="text-sm font-medium text-zinc-400 mb-1.5 block">Date</label>
                     <input type="date" required className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 transition-all text-sm" style={{ colorScheme: 'dark' }} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-zinc-400 mb-1.5 block">Time</label>
+                    <label className="text-sm font-medium text-zinc-400 mb-1.5 block">Start Time</label>
                     <input type="time" required className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 transition-all text-sm" style={{ colorScheme: 'dark' }} value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-zinc-400 mb-1.5 block">End Time</label>
+                    <input type="time" required className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 transition-all text-sm" style={{ colorScheme: 'dark' }} value={formData.end_time} onChange={e => setFormData({...formData, end_time: e.target.value})} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -367,6 +390,35 @@ export const SocietyHeadDashboard: React.FC = () => {
                     </select>
                   </div>
                 </div>
+                {formData.venue_id && formData.date && (
+                  <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium text-white">
+                      <MapPin className="w-4 h-4 text-blue-400" />
+                      Venue Schedule for {formData.date}
+                    </div>
+                    {venueBookings.length > 0 && (
+                      <div className="space-y-1">
+                        <span className="text-xs text-rose-400 font-medium">Booked:</span>
+                        {venueBookings.map((b: any, i: number) => (
+                          <div key={i} className="text-xs text-zinc-400 pl-2">{b.time} — {b.end_time} ({b.title})</div>
+                        ))}
+                      </div>
+                    )}
+                    {venueAvailability.length > 0 && (
+                      <div className="space-y-1">
+                        <span className="text-xs text-emerald-400 font-medium">Available Slots:</span>
+                        {venueAvailability.map((s: any, i: number) => (
+                          <button key={i} type="button" onClick={() => setFormData({...formData, time: s.start, end_time: s.end})} className="block text-xs text-blue-400 hover:text-blue-300 pl-2 cursor-pointer">
+                            {s.start} — {s.end} (click to select)
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {venueAvailability.length === 0 && venueBookings.length > 0 && (
+                      <div className="text-xs text-rose-400">Venue is fully booked on this date.</div>
+                    )}
+                  </div>
+                )}
                 <button type="submit" className="btn-primary w-full py-3 mt-2">Submit for Approval</button>
               </form>
             </motion.div>
@@ -499,14 +551,18 @@ export const SocietyHeadDashboard: React.FC = () => {
                   <label className="text-sm font-medium text-zinc-400 mb-1.5 block">Description</label>
                   <textarea className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 transition-all text-sm h-28" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="text-sm font-medium text-zinc-400 mb-1.5 block">Date</label>
                     <input type="date" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 transition-all text-sm" style={{ colorScheme: 'dark' }} value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-zinc-400 mb-1.5 block">Time</label>
+                    <label className="text-sm font-medium text-zinc-400 mb-1.5 block">Start Time</label>
                     <input type="time" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 transition-all text-sm" style={{ colorScheme: 'dark' }} value={editForm.time} onChange={e => setEditForm({...editForm, time: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-zinc-400 mb-1.5 block">End Time</label>
+                    <input type="time" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 transition-all text-sm" style={{ colorScheme: 'dark' }} value={editForm.end_time} onChange={e => setEditForm({...editForm, end_time: e.target.value})} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

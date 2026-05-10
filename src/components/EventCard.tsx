@@ -102,7 +102,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onAction, actionLab
             <div className="text-xs font-medium text-zinc-500 mb-0.5">Time</div>
             <div className="flex items-center gap-1.5 text-sm text-white font-medium">
               <Clock className="w-3.5 h-3.5 text-blue-400" />
-              <span>{event.time}</span>
+              <span>{event.time}{event.end_time ? ` — ${event.end_time}` : ''}</span>
             </div>
           </div>
         </div>

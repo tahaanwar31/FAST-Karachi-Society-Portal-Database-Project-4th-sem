@@ -120,9 +120,7 @@ async function initDb() {
       name TEXT NOT NULL,
       location TEXT NOT NULL,
       capacity INTEGER NOT NULL,
-      availability TEXT DEFAULT 'YES',
-      CHECK(capacity > 0),
-      CHECK(availability IN ('YES', 'NO'))
+      CHECK(capacity > 0)
     );
 
     CREATE TABLE IF NOT EXISTS societies (
@@ -147,6 +145,7 @@ async function initDb() {
       description TEXT,
       date TEXT NOT NULL,
       time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
       capacity INTEGER NOT NULL,
       society_id TEXT NOT NULL REFERENCES societies(id) ON DELETE CASCADE,
       venue_id TEXT NOT NULL REFERENCES venues(id) ON DELETE RESTRICT,
@@ -240,6 +239,7 @@ async function initDb() {
       proposed_description TEXT,
       proposed_date TEXT,
       proposed_time TEXT,
+      proposed_end_time TEXT,
       proposed_capacity INTEGER,
       proposed_venue_id TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -254,7 +254,8 @@ async function initDb() {
   // Migration: add new columns to existing tables
   try { await db.exec("ALTER TABLE societies ADD COLUMN status TEXT DEFAULT 'APPROVED'"); } catch {}
   try { await db.exec("ALTER TABLE societies ADD COLUMN admin_id TEXT"); } catch {}
-  try { await db.exec("ALTER TABLE venues ADD COLUMN availability TEXT DEFAULT 'YES'"); } catch {}
+  try { await db.exec("ALTER TABLE events ADD COLUMN end_time TEXT"); } catch {}
+  try { await db.exec("ALTER TABLE event_requests ADD COLUMN proposed_end_time TEXT"); } catch {}
 
   // Migration: add foreign key constraints (PostgreSQL)
   if (isPostgres) {
@@ -282,7 +283,6 @@ async function initDb() {
     const checkConstraints = [
       "ALTER TABLE users ADD CONSTRAINT chk_users_role CHECK (role IN ('ADMIN', 'SOCIETY_HEAD', 'STUDENT'))",
       "ALTER TABLE venues ADD CONSTRAINT chk_venues_capacity CHECK (capacity > 0)",
-      "ALTER TABLE venues ADD CONSTRAINT chk_venues_availability CHECK (availability IN ('YES', 'NO'))",
       "ALTER TABLE societies ADD CONSTRAINT chk_societies_status CHECK (status IN ('APPROVED', 'PENDING', 'REJECTED'))",
       "ALTER TABLE societies ADD CONSTRAINT chk_societies_category CHECK (category IS NULL OR category IN ('TECHNICAL', 'CULTURAL', 'LITERARY', 'SPORTS', 'SOCIAL'))",
       "ALTER TABLE events ADD CONSTRAINT chk_events_status CHECK (status IN ('PENDING', 'PUBLISHED', 'CANCELLED'))",
@@ -359,17 +359,19 @@ async function initDb() {
     await insertSociety.run('s6', 'Literary Society', 'Fostering literary talent through debates, poetry recitals, essay writing competitions, and publication of the university magazine.', 'head-6', 'cohead-6', 'LITERARY', 2001, 'literary@nu.edu.pk', 'Nurturing the art of expression through words.', 'APPROVED', 'admin-1');
 
     // --- Events ---
-    const insertEvent = db.prepare('INSERT INTO events (id, title, description, date, time, capacity, society_id, venue_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    await insertEvent.run('e1', 'Internal Hackathon 2026', '24-hour hackathon challenging students to build innovative solutions for real-world problems using cutting-edge technology.', '2026-06-15', '10:00', 100, 's1', 'v1', 'PUBLISHED');
-    await insertEvent.run('e2', 'Speed Programming Contest', 'Competitive programming contest testing algorithmic thinking and coding speed under time pressure. Individual participation.', '2026-06-20', '09:00', 80, 's1', 'v4', 'PUBLISHED');
-    await insertEvent.run('e3', 'Web Dev Bootcamp', 'Hands-on workshop covering React, Node.js, and full-stack development. Beginners welcome. Laptops required.', '2026-07-05', '14:00', 50, 's3', 'v4', 'PUBLISHED');
-    await insertEvent.run('e4', 'Annual Theater Festival', 'Three-day theater festival featuring original plays written and performed by FAST students. Open to all departments.', '2026-07-10', '18:00', 200, 's4', 'v7', 'PUBLISHED');
-    await insertEvent.run('e5', 'Inter-Department Cricket Tournament', 'Weekend cricket tournament with teams from CS, EE, CE, and BBA departments. Knockout format.', '2026-07-12', '08:00', 120, 's5', 'v5', 'PUBLISHED');
-    await insertEvent.run('e6', 'All Pakistan Debate Championship', 'National-level bilingual debate competition with participants from 20+ universities across Pakistan.', '2026-08-01', '10:00', 150, 's6', 'v1', 'PENDING');
-    await insertEvent.run('e7', 'AI/ML Workshop Series', 'Week-long workshop series on machine learning fundamentals, neural networks, and practical AI applications with Python.', '2026-08-10', '11:00', 40, 's3', 'v6', 'PENDING');
-    await insertEvent.run('e8', 'Bridge Building Competition', 'Civil engineering challenge to design and construct scale model bridges tested for structural integrity.', '2026-07-25', '09:00', 60, 's2', 'v3', 'PUBLISHED');
-    await insertEvent.run('e9', 'Startup Idea Pitch Night', 'Pitch your startup idea to a panel of industry judges. Top 3 ideas get mentorship and incubation support.', '2026-06-28', '17:00', 80, 's1', 'v2', 'PUBLISHED');
-    await insertEvent.run('e10', 'Poetry Slam', 'Open mic poetry event featuring Urdu and English poetry. Express yourself through spoken word.', '2026-07-18', '16:00', 60, 's6', 'v3', 'PENDING');
+    const insertEvent = db.prepare('INSERT INTO events (id, title, description, date, time, end_time, capacity, society_id, venue_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    await insertEvent.run('e0a', 'Job Fair', 'Annual job fair connecting students with top employers from tech, finance, and engineering industries.', '2026-05-31', '09:00', '15:00', 100, 's1', 'v1', 'PUBLISHED');
+    await insertEvent.run('e0b', 'Check', 'System check event for testing venue scheduling and registration workflows.', '2026-06-05', '10:00', '12:00', 100, 's1', 'v2', 'PUBLISHED');
+    await insertEvent.run('e1', 'Internal Hackathon 2026', '24-hour hackathon challenging students to build innovative solutions for real-world problems using cutting-edge technology.', '2026-06-15', '10:00', '16:00', 100, 's1', 'v1', 'PUBLISHED');
+    await insertEvent.run('e2', 'Speed Programming Contest', 'Competitive programming contest testing algorithmic thinking and coding speed under time pressure. Individual participation.', '2026-06-20', '09:00', '13:00', 80, 's1', 'v4', 'PUBLISHED');
+    await insertEvent.run('e3', 'Web Dev Bootcamp', 'Hands-on workshop covering React, Node.js, and full-stack development. Beginners welcome. Laptops required.', '2026-07-05', '14:00', '16:00', 50, 's3', 'v4', 'PUBLISHED');
+    await insertEvent.run('e4', 'Annual Theater Festival', 'Three-day theater festival featuring original plays written and performed by FAST students. Open to all departments.', '2026-07-10', '13:00', '16:00', 200, 's4', 'v7', 'PUBLISHED');
+    await insertEvent.run('e5', 'Inter-Department Cricket Tournament', 'Weekend cricket tournament with teams from CS, EE, CE, and BBA departments. Knockout format.', '2026-07-12', '08:00', '15:00', 120, 's5', 'v5', 'PUBLISHED');
+    await insertEvent.run('e6', 'All Pakistan Debate Championship', 'National-level bilingual debate competition with participants from 20+ universities across Pakistan.', '2026-08-01', '10:00', '14:00', 150, 's6', 'v1', 'PENDING');
+    await insertEvent.run('e7', 'AI/ML Workshop Series', 'Week-long workshop series on machine learning fundamentals, neural networks, and practical AI applications with Python.', '2026-08-10', '11:00', '14:00', 40, 's3', 'v6', 'PENDING');
+    await insertEvent.run('e8', 'Bridge Building Competition', 'Civil engineering challenge to design and construct scale model bridges tested for structural integrity.', '2026-07-25', '09:00', '12:00', 60, 's2', 'v3', 'PUBLISHED');
+    await insertEvent.run('e9', 'Startup Idea Pitch Night', 'Pitch your startup idea to a panel of industry judges. Top 3 ideas get mentorship and incubation support.', '2026-06-28', '13:00', '16:00', 80, 's1', 'v2', 'PUBLISHED');
+    await insertEvent.run('e10', 'Poetry Slam', 'Open mic poetry event featuring Urdu and English poetry. Express yourself through spoken word.', '2026-07-18', '14:00', '16:00', 60, 's6', 'v3', 'PENDING');
 
     // --- Registrations ---
     const insertReg = db.prepare('INSERT INTO registrations (id, user_id, event_id, status) VALUES (?, ?, ?, ?)');
@@ -657,19 +659,28 @@ app.get('/api/head/my-events', authMiddleware, async (req: any, res) => {
 
 app.post('/api/head/create-event', authMiddleware, async (req: any, res) => {
     if (req.user.role !== 'SOCIETY_HEAD') return res.status(403).end();
-    const { title, description, date, time, capacity, venue_id } = req.body;
+    const { title, description, date, time, end_time, capacity, venue_id } = req.body;
     const society = await db.prepare('SELECT id FROM societies WHERE head_id = ?').get(req.user.id);
     if (!society) return res.status(400).json({ error: 'No society found' });
+    if (!end_time) return res.status(400).json({ error: 'End time is required' });
+    if (time >= end_time) return res.status(400).json({ error: 'End time must be after start time' });
 
-    // Validate venue availability and capacity
+    // Validate venue capacity
     const venue = await db.prepare('SELECT * FROM venues WHERE id = ?').get(venue_id);
     if (!venue) return res.status(400).json({ error: 'Venue not found' });
-    if (venue.availability !== 'YES') return res.status(400).json({ error: 'This venue is currently unavailable' });
     if (Number(capacity) > Number(venue.capacity)) return res.status(400).json({ error: `Event capacity (${capacity}) exceeds venue capacity (${venue.capacity})` });
 
+    // Check for time conflicts at this venue on this date
+    const conflicts = await db.prepare(
+      "SELECT * FROM events WHERE venue_id = ? AND date = ? AND status != 'CANCELLED' AND ((time < ? AND end_time > ?) OR (time < ? AND end_time > ?))"
+    ).all(venue_id, date, end_time, time, end_time, time);
+    if (conflicts.length > 0) {
+      return res.status(400).json({ error: `Venue is already booked from ${conflicts[0].time} to ${conflicts[0].end_time} on ${date}` });
+    }
+
     const id = Math.random().toString(36).substring(2, 11);
-    await db.prepare('INSERT INTO events (id, title, description, date, time, capacity, society_id, venue_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(id, title, description, date, time, capacity, society.id, venue_id);
+    await db.prepare('INSERT INTO events (id, title, description, date, time, end_time, capacity, society_id, venue_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, title, description, date, time, end_time, capacity, society.id, venue_id);
     res.json({ success: true, id });
 });
 
@@ -678,22 +689,56 @@ app.get('/api/venues', async (req, res) => {
     res.json(venues);
 });
 
-// --- Admin Venue Management ---
-app.patch('/api/admin/venues/:id', authMiddleware, async (req: any, res) => {
-    if (req.user.role !== 'ADMIN') return res.status(403).end();
-    const { availability } = req.body;
-    if (!['YES', 'NO'].includes(availability)) return res.status(400).json({ error: 'availability must be YES or NO' });
-    await db.prepare('UPDATE venues SET availability = ? WHERE id = ?').run(availability, req.params.id);
-    res.json({ success: true });
+// Get venue schedule for a specific date
+app.get('/api/venues/:id/schedule', async (req, res) => {
+    const { id } = req.params;
+    const date = req.query.date as string;
+    if (!date) return res.status(400).json({ error: 'Date query parameter required' });
+    const bookings = await db.prepare(
+      "SELECT title, time, end_time FROM events WHERE venue_id = ? AND date = ? AND status != 'CANCELLED' ORDER BY time"
+    ).all(id, date);
+    res.json(bookings);
 });
 
+// Get available time slots for a venue on a date
+app.get('/api/venues/:id/availability', async (req, res) => {
+    const { id } = req.params;
+    const date = req.query.date as string;
+    if (!date) return res.status(400).json({ error: 'Date query parameter required' });
+    const bookings = await db.prepare(
+      "SELECT time, end_time FROM events WHERE venue_id = ? AND date = ? AND status != 'CANCELLED' ORDER BY time"
+    ).all(id, date);
+
+    // Uni hours: 08:00 to 16:00
+    const uniStart = 480; // 8*60
+    const uniEnd = 960;   // 16*60
+    const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const toTime = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+    const slots: { start: string, end: string }[] = [];
+    let cursor = uniStart;
+    for (const b of bookings) {
+      const bStart = toMin(b.time);
+      const bEnd = toMin(b.end_time);
+      if (cursor < bStart) {
+        slots.push({ start: toTime(cursor), end: toTime(bStart) });
+      }
+      cursor = Math.max(cursor, bEnd);
+    }
+    if (cursor < uniEnd) {
+      slots.push({ start: toTime(cursor), end: toTime(uniEnd) });
+    }
+    res.json({ venue_id: id, date, bookings, available_slots: slots });
+});
+
+// --- Admin Venue Management ---
 app.post('/api/admin/venues', authMiddleware, async (req: any, res) => {
     if (req.user.role !== 'ADMIN') return res.status(403).end();
     const { name, location, capacity } = req.body;
     if (!name || !location || !capacity) return res.status(400).json({ error: 'Name, location, and capacity are required' });
     const id = 'v-' + Math.random().toString(36).substring(2, 8);
-    await db.prepare('INSERT INTO venues (id, name, location, capacity, availability) VALUES (?, ?, ?, ?, ?)')
-      .run(id, name, location, capacity, 'YES');
+    await db.prepare('INSERT INTO venues (id, name, location, capacity) VALUES (?, ?, ?, ?)')
+      .run(id, name, location, capacity);
     res.json({ success: true, id });
 });
 
@@ -939,7 +984,7 @@ app.get('/api/events/:id/attendance', authMiddleware, async (req: any, res) => {
 // --- Event Requests (Update/Delete from Society Heads) ---
 app.post('/api/head/event-request', authMiddleware, async (req: any, res) => {
   if (req.user.role !== 'SOCIETY_HEAD') return res.status(403).end();
-  const { event_id, request_type, reason, proposed_title, proposed_description, proposed_date, proposed_time, proposed_capacity, proposed_venue_id } = req.body;
+  const { event_id, request_type, reason, proposed_title, proposed_description, proposed_date, proposed_time, proposed_end_time, proposed_capacity, proposed_venue_id } = req.body;
   if (!event_id || !request_type) return res.status(400).json({ error: 'event_id and request_type required' });
   if (!['UPDATE', 'DELETE'].includes(request_type)) return res.status(400).json({ error: 'request_type must be UPDATE or DELETE' });
   const event = await db.prepare(`
@@ -950,9 +995,9 @@ app.post('/api/head/event-request', authMiddleware, async (req: any, res) => {
   if (!event) return res.status(403).json({ error: 'Not your event' });
   const id = Math.random().toString(36).substring(2, 11);
   await db.prepare(`
-    INSERT INTO event_requests (id, event_id, head_id, request_type, reason, proposed_title, proposed_description, proposed_date, proposed_time, proposed_capacity, proposed_venue_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, event_id, req.user.id, request_type, reason || null, proposed_title || null, proposed_description || null, proposed_date || null, proposed_time || null, proposed_capacity || null, proposed_venue_id || null);
+    INSERT INTO event_requests (id, event_id, head_id, request_type, reason, proposed_title, proposed_description, proposed_date, proposed_time, proposed_end_time, proposed_capacity, proposed_venue_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, event_id, req.user.id, request_type, reason || null, proposed_title || null, proposed_description || null, proposed_date || null, proposed_time || null, proposed_end_time || null, proposed_capacity || null, proposed_venue_id || null);
   res.json({ success: true, id });
 });
 
@@ -986,6 +1031,7 @@ app.post('/api/admin/approve-event-request/:id', authMiddleware, async (req: any
     if (request.proposed_description) { updates.push('description = ?'); params.push(request.proposed_description); }
     if (request.proposed_date) { updates.push('date = ?'); params.push(request.proposed_date); }
     if (request.proposed_time) { updates.push('time = ?'); params.push(request.proposed_time); }
+    if (request.proposed_end_time) { updates.push('end_time = ?'); params.push(request.proposed_end_time); }
     if (request.proposed_capacity) { updates.push('capacity = ?'); params.push(request.proposed_capacity); }
     if (request.proposed_venue_id) { updates.push('venue_id = ?'); params.push(request.proposed_venue_id); }
     if (updates.length > 0) {

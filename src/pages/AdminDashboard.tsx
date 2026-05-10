@@ -291,7 +291,7 @@ export const AdminDashboard: React.FC = () => {
                       <div className="text-xs text-zinc-400 mb-3 space-y-1">
                         {req.proposed_title && <p>Title: {req.proposed_title}</p>}
                         {req.proposed_date && <p>Date: {req.proposed_date}</p>}
-                        {req.proposed_time && <p>Time: {req.proposed_time}</p>}
+                        {req.proposed_time && <p>Time: {req.proposed_time}{req.proposed_end_time ? ` — ${req.proposed_end_time}` : ''}</p>}
                         {req.proposed_capacity && <p>Capacity: {req.proposed_capacity}</p>}
                       </div>
                     )}
@@ -362,51 +362,40 @@ export const AdminDashboard: React.FC = () => {
                   <MapPin className="w-4 h-4 text-blue-400" />
                 </div>
                 <h3 className="text-lg font-semibold text-white">Venues</h3>
+                <span className="text-xs text-zinc-500">Uni hours: 08:00 — 16:00</span>
               </div>
-              <div className="glass rounded-xl overflow-hidden">
-                <table className="w-full text-left">
-                  <thead><tr className="border-b border-white/[0.06] bg-white/[0.01]">
-                    <th className="px-6 py-3 text-xs font-medium text-zinc-500">Name</th>
-                    <th className="px-6 py-3 text-xs font-medium text-zinc-500">Location</th>
-                    <th className="px-6 py-3 text-xs font-medium text-zinc-500">Capacity</th>
-                    <th className="px-6 py-3 text-xs font-medium text-zinc-500">Availability</th>
-                    <th className="px-6 py-3 text-xs font-medium text-zinc-500 text-right">Action</th>
-                  </tr></thead>
-                  <tbody className="divide-y divide-white/[0.04]">
-                    {venues.map((v: any) => (
-                      <tr key={v.id} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="px-6 py-3 text-sm text-white font-medium">{v.name}</td>
-                        <td className="px-6 py-3 text-sm text-zinc-400">{v.location}</td>
-                        <td className="px-6 py-3 text-sm text-zinc-400">{v.capacity}</td>
-                        <td className="px-6 py-3">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium border ${v.availability !== 'NO' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
-                            {v.availability !== 'NO' ? 'Available' : 'Unavailable'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3 text-right">
-                          <button
-                            onClick={async () => {
-                              const newAvail = v.availability === 'NO' ? 'YES' : 'NO';
-                              await fetch(`/api/admin/venues/${v.id}`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ availability: newAvail })
-                              });
-                              fetchData();
-                            }}
-                            className={`text-xs px-3 py-1 rounded-lg border transition-colors ${
-                              v.availability !== 'NO'
-                                ? 'text-rose-400 border-rose-500/20 hover:bg-rose-500/10'
-                                : 'text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10'
-                            }`}
-                          >
-                            {v.availability !== 'NO' ? 'Mark Unavailable' : 'Mark Available'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {venues.map((v: any) => {
+                  const venueEvents = publishedEvents.filter((e: any) => e.venue_id === v.id);
+                  return (
+                    <div key={v.id} className="glass p-5 rounded-xl">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="text-sm font-semibold text-white">{v.name}</h4>
+                          <p className="text-xs text-zinc-500">{v.location} | Capacity: {v.capacity}</p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          Active
+                        </span>
+                      </div>
+                      {venueEvents.length > 0 ? (
+                        <div className="space-y-1.5 mt-3 pt-3 border-t border-white/[0.06]">
+                          <span className="text-xs text-zinc-500 font-medium">Upcoming Bookings:</span>
+                          {venueEvents.map((ev: any) => (
+                            <div key={ev.id} className="flex items-center gap-2 text-xs">
+                              <span className="text-blue-400 font-mono">{ev.time}{ev.end_time ? `—${ev.end_time}` : ''}</span>
+                              <span className="text-zinc-400">{ev.date}</span>
+                              <span className="text-zinc-500">|</span>
+                              <span className="text-white truncate">{ev.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-zinc-600 mt-3 pt-3 border-t border-white/[0.06]">No upcoming bookings</div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
@@ -655,7 +644,7 @@ export const AdminDashboard: React.FC = () => {
               {activeTab === 'venues' && (
                 <div className="glass rounded-xl overflow-hidden">
                   <div className="px-6 py-3 bg-white/[0.02] border-b border-white/[0.06]">
-                    <span className="text-xs text-zinc-500">{venues.length} venues</span>
+                    <span className="text-xs text-zinc-500">{venues.length} venues | Uni hours: 08:00 — 16:00</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
@@ -663,17 +652,26 @@ export const AdminDashboard: React.FC = () => {
                         <th className="px-6 py-3 text-xs font-medium text-zinc-500">Name</th>
                         <th className="px-6 py-3 text-xs font-medium text-zinc-500">Location</th>
                         <th className="px-6 py-3 text-xs font-medium text-zinc-500">Capacity</th>
-                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Availability</th>
+                        <th className="px-6 py-3 text-xs font-medium text-zinc-500">Booked Slots</th>
                       </tr></thead>
                       <tbody className="divide-y divide-white/[0.04]">
-                        {venues.map((v: any) => (
-                          <tr key={v.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="px-6 py-3 text-sm text-white font-medium">{v.name}</td>
-                            <td className="px-6 py-3 text-sm text-zinc-400">{v.location}</td>
-                            <td className="px-6 py-3 text-sm text-zinc-400">{v.capacity}</td>
-                            <td className="px-6 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium border ${v.availability !== 'NO' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>{v.availability !== 'NO' ? 'Available' : 'Unavailable'}</span></td>
-                          </tr>
-                        ))}
+                        {venues.map((v: any) => {
+                          const vEvents = publishedEvents.filter((e: any) => e.venue_id === v.id);
+                          return (
+                            <tr key={v.id} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="px-6 py-3 text-sm text-white font-medium">{v.name}</td>
+                              <td className="px-6 py-3 text-sm text-zinc-400">{v.location}</td>
+                              <td className="px-6 py-3 text-sm text-zinc-400">{v.capacity}</td>
+                              <td className="px-6 py-3">
+                                {vEvents.length > 0 ? vEvents.map((ev: any) => (
+                                  <div key={ev.id} className="text-xs text-zinc-400">
+                                    <span className="text-blue-400 font-mono">{ev.time}{ev.end_time ? `—${ev.end_time}` : ''}</span> {ev.date} | {ev.title}
+                                  </div>
+                                )) : <span className="text-xs text-zinc-600">No bookings</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -699,7 +697,7 @@ export const AdminDashboard: React.FC = () => {
                           <tr key={ev.id} className="hover:bg-white/[0.02] transition-colors">
                             <td className="px-6 py-3 text-sm text-white font-medium">{ev.title}</td>
                             <td className="px-6 py-3 text-sm text-blue-400 font-medium">{ev.society_name}</td>
-                            <td className="px-6 py-3 text-sm text-zinc-400 font-mono">{ev.date}</td>
+                            <td className="px-6 py-3 text-sm text-zinc-400 font-mono">{ev.date} | {ev.time}{ev.end_time ? `—${ev.end_time}` : ''}</td>
                             <td className="px-6 py-3 text-sm text-zinc-400">{Number(ev.participant_count)} / {ev.capacity}</td>
                             <td className="px-6 py-3">
                               <button onClick={() => handleViewParticipants(ev.id)} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">View</button>
