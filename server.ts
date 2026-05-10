@@ -145,7 +145,7 @@ async function initDb() {
       description TEXT,
       date TEXT NOT NULL,
       time TEXT NOT NULL,
-      end_time TEXT NOT NULL,
+      end_time TEXT,
       capacity INTEGER NOT NULL,
       society_id TEXT NOT NULL REFERENCES societies(id) ON DELETE CASCADE,
       venue_id TEXT NOT NULL REFERENCES venues(id) ON DELETE RESTRICT,
@@ -251,13 +251,19 @@ async function initDb() {
 
   await db.exec(schema);
 
-  // Migration: add new columns to existing tables
-  try { await db.exec("ALTER TABLE societies ADD COLUMN status TEXT DEFAULT 'APPROVED'"); } catch {}
-  try { await db.exec("ALTER TABLE societies ADD COLUMN admin_id TEXT"); } catch {}
-  try { await db.exec("ALTER TABLE events ADD COLUMN end_time TEXT"); } catch {}
-  try { await db.exec("ALTER TABLE event_requests ADD COLUMN proposed_end_time TEXT"); } catch {}
+  // Migration: add columns that may be missing on older databases
+  // (on fresh DB these are already in CREATE TABLE, so ALTER will fail silently)
+  const migrations = [
+    "ALTER TABLE societies ADD COLUMN status TEXT DEFAULT 'APPROVED'",
+    "ALTER TABLE societies ADD COLUMN admin_id TEXT",
+    "ALTER TABLE events ADD COLUMN end_time TEXT",
+    "ALTER TABLE event_requests ADD COLUMN proposed_end_time TEXT",
+  ];
+  for (const sql of migrations) {
+    try { await db.exec(sql); } catch { /* column already exists */ }
+  }
 
-  // Migration: add foreign key constraints (PostgreSQL)
+  // Migration: add foreign key constraints (PostgreSQL only)
   if (isPostgres) {
     const fkConstraints = [
       "ALTER TABLE societies ADD CONSTRAINT fk_societies_head FOREIGN KEY (head_id) REFERENCES users(id) ON DELETE SET NULL",
@@ -340,14 +346,14 @@ async function initDb() {
     await insertUser.run('student-12', 'Ahmed Zubair', 'ahmed.z@nu.edu.pk', 'student123', 'STUDENT', '21K-8642', '0351-2345678');
 
     // --- Venues ---
-    const insertVenue = db.prepare('INSERT INTO venues (id, name, location, capacity, availability) VALUES (?, ?, ?, ?, ?)');
-    await insertVenue.run('v1', 'Main Auditorium', 'Block A, Ground Floor', 500, 'YES');
-    await insertVenue.run('v2', 'Seminar Hall 1', 'Block B, 1st Floor', 150, 'YES');
-    await insertVenue.run('v3', 'Seminar Hall 2', 'Block B, 2nd Floor', 120, 'YES');
-    await insertVenue.run('v4', 'Computer Lab 1', 'Block C, Ground Floor', 60, 'YES');
-    await insertVenue.run('v5', 'Sports Ground', 'Outdoor Area', 300, 'YES');
-    await insertVenue.run('v6', 'Conference Room', 'Block A, 3rd Floor', 40, 'NO');
-    await insertVenue.run('v7', 'Multi-Purpose Hall', 'Block D, Ground Floor', 250, 'YES');
+    const insertVenue = db.prepare('INSERT INTO venues (id, name, location, capacity) VALUES (?, ?, ?, ?)');
+    await insertVenue.run('v1', 'Main Auditorium', 'Block A, Ground Floor', 500);
+    await insertVenue.run('v2', 'Seminar Hall 1', 'Block B, 1st Floor', 150);
+    await insertVenue.run('v3', 'Seminar Hall 2', 'Block B, 2nd Floor', 120);
+    await insertVenue.run('v4', 'Computer Lab 1', 'Block C, Ground Floor', 60);
+    await insertVenue.run('v5', 'Sports Ground', 'Outdoor Area', 300);
+    await insertVenue.run('v6', 'Conference Room', 'Block A, 3rd Floor', 40);
+    await insertVenue.run('v7', 'Multi-Purpose Hall', 'Block D, Ground Floor', 250);
 
     // --- Societies ---
     const insertSociety = db.prepare('INSERT INTO societies (id, name, description, head_id, co_head_id, category, established_year, contact_email, vision, status, admin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
@@ -479,7 +485,7 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   const user = await db.prepare('SELECT * FROM users WHERE email = ? AND password = ?').get(email, password);
   if (user) {
-    res.cookie('userId', user.id, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.cookie('userId', user.id, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000, secure: isPostgres });
     const { password: _, ...userWithoutPass } = user;
     res.json(userWithoutPass);
   } else {
@@ -488,7 +494,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/auth/logout', (req, res) => {
-  res.clearCookie('userId');
+  res.clearCookie('userId', { path: '/', httpOnly: true, sameSite: 'lax', secure: isPostgres });
   res.json({ success: true });
 });
 
