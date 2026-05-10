@@ -276,8 +276,9 @@ async function initDb() {
   }
 
   // Seed data
-  const userCheck = await db.prepare('SELECT count(*) as count FROM users').get();
-  const count = parseInt(userCheck.count);
+  const userCheck = await db.prepare('SELECT count(*) as count FROM users').get() as any;
+  const count = Number(userCheck?.count ?? userCheck?.COUNT ?? 0);
+  console.log(`--- DB: User count = ${count} (raw: ${JSON.stringify(userCheck)}) ---`);
 
   if (count === 0) {
     console.log('Seeding initial data...');
