@@ -34,9 +34,9 @@ This leads to scheduling conflicts, unapproved events, poor attendance tracking,
 
 | Role | Capabilities |
 |------|-------------|
-| **Students** | Browse all published events, register with one click, track their registrations |
-| **Society Heads** | Create events, track registration counts, view capacity utilization |
-| **Admin** | Approve/reject events, manage societies, assign heads & co-heads, inspect full database, run SQL queries |
+| **Students** | Browse events, register/unregister, give feedback on attended events, track participation |
+| **Society Heads** | Create events, manage participants, mark attendance, request event edits/deletions (admin-approved), view feedback |
+| **Admin** | Approve/reject events & change requests, manage societies, venues, assign heads & co-heads, inspect database, run SQL queries |
 
 ### Event Approval Workflow
 
@@ -45,6 +45,16 @@ Society Head creates event → Status: PENDING
                               ↓
 Admin reviews & approves  → Status: PUBLISHED → Visible to all students
 Admin rejects             → Status: CANCELLED → Removed from listings
+```
+
+### Event Change Request Workflow
+
+```
+Society Head requests UPDATE/DELETE → Status: PENDING
+                                      ↓
+Admin approves (UPDATE)            → Changes applied to event
+Admin approves (DELETE)            → Event removed
+Admin rejects (with reason)        → Society head notified with reason
 ```
 
 Every event goes through admin approval before students can see or register for it.
@@ -56,19 +66,28 @@ Every event goes through admin approval before students can see or register for 
 ### For Students
 - Browse all approved upcoming events with real-time countdown timers
 - One-click event registration with capacity tracking
-- Personal dashboard showing all registered events
+- Unregister from events before they start
+- Give feedback (1-5 star rating + comments) on attended events
+- Personal dashboard showing registrations, attended events, and feedback status
 - Search events by name or society
 
 ### For Society Heads
 - Create new event proposals (title, description, date, time, venue, capacity)
 - Track registration counts and capacity utilization per event
+- View participant list per event with attendance tracking
+- Mark participants as Present/Absent
+- View feedback received on events (ratings & comments)
+- Request event edits or deletion (goes through admin approval)
+- Receive notifications when admin approves/rejects change requests
 - Visual progress bars showing fill rate
 - Events remain pending until admin approval
 
 ### For Admin
 - **Dashboard** with real-time stats (societies, users, events, registrations)
 - **Event approval queue** — approve or reject pending events
+- **Event change requests** — review and approve/reject society head UPDATE/DELETE requests with reason
 - **Society management** — create societies, assign heads & co-heads, delete societies
+- **Venue management** — add venues, toggle availability (YES/NO), enforce on event creation
 - **User management** — view all admins, heads, co-heads, and student members
 - **SQL Console** — run raw SQL queries against the database
 - **Database Inspector** — browse all tables and records visually
@@ -81,6 +100,12 @@ Every event goes through admin approval before students can see or register for 
 - Real-time countdown timers on event cards
 - Animated transitions with Framer Motion
 - Role-based table registry (admins, heads, co-heads, student members)
+- 14 foreign key relationships with proper ON DELETE behaviors (CASCADE, SET NULL, RESTRICT)
+- 12 CHECK constraints for data integrity (roles, statuses, ratings, capacities)
+- 8 UNIQUE constraints (emails, society names, composite registration/feedback)
+- Venue availability enforcement — unavailable venues rejected on event creation
+- Event capacity cannot exceed venue capacity
+- Server-side capacity enforcement on registration
 
 ---
 
@@ -163,17 +188,28 @@ The app runs at `http://localhost:3000`. It auto-seeds sample data on first run.
 
 ## Database Schema
 
-9 tables with seed data:
+11 tables with seed data:
 
 - **users** — Unified auth table for all roles
-- **societies** — Society details with head/co-head assignments
-- **events** — Event proposals with approval status
-- **registrations** — Student-event registrations
-- **venues** — Campus locations and capacities
+- **societies** — Society details with head/co-head assignments, status, and admin tracking
+- **events** — Event proposals with approval status and venue assignment
+- **registrations** — Student-event registrations with attendance status
+- **venues** — Campus locations with capacity and availability (YES/NO)
 - **admins** — Dedicated admin records with access levels
 - **heads** — Society head records with tenure tracking
 - **co_heads** — Co-head records per society
 - **student_members** — Student membership records with semester/department info
+- **feedback** — Student event feedback with 1-5 rating and comments
+- **event_requests** — Society head UPDATE/DELETE requests with admin approval workflow
+
+### Integrity Constraints
+
+- **14 Foreign Keys** — Users, societies, events, registrations, feedback, and event_requests all properly linked
+- **12 CHECK Constraints** — Roles (ADMIN/SOCIETY_HEAD/STUDENT), statuses, availability (YES/NO), ratings (1-5), request types, etc.
+- **8 UNIQUE Constraints** — Emails, society names, composite (user_id + event_id) for registrations and feedback
+- **ON DELETE CASCADE** — Registrations, feedback, and event_requests removed when parent event/user is deleted
+- **ON DELETE SET NULL** — Head assignments cleared when user is deleted
+- **ON DELETE RESTRICT** — Venue cannot be deleted if events reference it
 
 ---
 
