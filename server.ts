@@ -66,15 +66,9 @@ if (isPostgres) {
       }
     }),
     exec: async (sql: string) => {
-        try {
-          // Split on semicolons to run each statement separately for Postgres
-          const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0);
-          for (const stmt of statements) {
-            await pgPool!.query(stmt);
-          }
-        } catch (err) {
-          console.error('DB Exec Error:', err);
-          throw err;
+        const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0);
+        for (const stmt of statements) {
+          await pgPool!.query(stmt);
         }
     }
   };
