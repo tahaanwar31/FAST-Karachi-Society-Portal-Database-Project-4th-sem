@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, X, ShieldAlert, Users, Calendar, Activity, BarChart3, Loader2, Database as DbIcon, Layout, Terminal, Plus, Trash2, UserPlus } from 'lucide-react';
+import { Check, X, ShieldAlert, Users, Calendar, Activity, BarChart3, Loader2, Database as DbIcon, Layout, Terminal, Plus, Trash2, UserPlus, Edit3, AlertCircle, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const AdminDashboard: React.FC = () => {
@@ -36,10 +36,16 @@ export const AdminDashboard: React.FC = () => {
   const [studentMembers, setStudentMembers] = useState([]);
   const [stats, setStats] = useState<any>(null);
 
+  // Event Requests
+  const [eventRequests, setEventRequests] = useState<any[]>([]);
+  const [rejectingRequest, setRejectingRequest] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [venues, setVenues] = useState<any[]>([]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [pendingRes, publishedRes, socRes, userRes, statsRes, adminsRes, headsRes, coHeadsRes, membersRes] = await Promise.all([
+      const [pendingRes, publishedRes, socRes, userRes, statsRes, adminsRes, headsRes, coHeadsRes, membersRes, reqRes, venueRes] = await Promise.all([
         fetch('/api/admin/pending-events'),
         fetch('/api/events'),
         fetch('/api/societies'),
@@ -48,7 +54,9 @@ export const AdminDashboard: React.FC = () => {
         fetch('/api/admin/admins'),
         fetch('/api/admin/heads'),
         fetch('/api/admin/co-heads'),
-        fetch('/api/admin/student-members')
+        fetch('/api/admin/student-members'),
+        fetch('/api/admin/event-requests'),
+        fetch('/api/venues')
       ]);
       setPendingEvents(await pendingRes.json());
       setPublishedEvents(await publishedRes.json());
@@ -59,6 +67,8 @@ export const AdminDashboard: React.FC = () => {
       setHeads(await headsRes.json());
       setCoHeads(await coHeadsRes.json());
       setStudentMembers(await membersRes.json());
+      setEventRequests(await reqRes.json());
+      setVenues(await venueRes.json());
     } catch (err) {
       console.error(err);
     } finally {
@@ -147,6 +157,22 @@ export const AdminDashboard: React.FC = () => {
     fetchData();
   };
 
+  const handleApproveEventRequest = async (id: string) => {
+    await fetch(`/api/admin/approve-event-request/${id}`, { method: 'POST' });
+    fetchData();
+  };
+
+  const handleRejectEventRequest = async (id: string) => {
+    await fetch(`/api/admin/reject-event-request/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ admin_reason: rejectReason })
+    });
+    setRejectingRequest(null);
+    setRejectReason('');
+    fetchData();
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -181,7 +207,7 @@ export const AdminDashboard: React.FC = () => {
                 { label: 'Pending Events', value: pendingEvents.length, icon: Activity, color: 'amber' },
                 { label: 'Societies', value: societies.length, icon: Users, color: 'blue' },
                 { label: 'Users', value: users.length, icon: Users, color: 'blue' },
-                { label: 'Registrations', value: stats?.registrations?.count || 0, icon: BarChart3, color: 'blue' },
+                { label: 'Registrations', value: Number(stats?.registrations?.count || 0), icon: BarChart3, color: 'blue' },
               ].map(stat => (
                 <div key={stat.label} className="p-5 glass rounded-xl">
                   <div className="flex items-center gap-2 mb-3">
@@ -234,6 +260,77 @@ export const AdminDashboard: React.FC = () => {
               )}
             </section>
 
+            {/* Event Change Requests */}
+            {eventRequests.length > 0 && (
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-9 h-9 bg-purple-500/10 rounded-lg flex items-center justify-center border border-purple-500/20">
+                  <Edit3 className="w-4 h-4 text-purple-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Event Change Requests</h3>
+                <span className="text-xs text-zinc-500 bg-white/[0.03] px-3 py-1 rounded-full border border-white/[0.06]">
+                  {eventRequests.length} pending
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {eventRequests.map((req: any) => (
+                  <motion.div key={req.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5 rounded-xl flex flex-col">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium border ${
+                        req.request_type === 'DELETE' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                      }`}>
+                        {req.request_type === 'DELETE' ? 'Delete' : 'Update'}
+                      </span>
+                      <span className="text-xs text-zinc-500">{req.society_name}</span>
+                    </div>
+                    <h4 className="text-base font-semibold text-white mb-1">{req.event_title}</h4>
+                    <p className="text-xs text-zinc-500 mb-2">Requested by: {req.head_name}</p>
+
+                    {req.request_type === 'UPDATE' && (
+                      <div className="text-xs text-zinc-400 mb-3 space-y-1">
+                        {req.proposed_title && <p>Title: {req.proposed_title}</p>}
+                        {req.proposed_date && <p>Date: {req.proposed_date}</p>}
+                        {req.proposed_time && <p>Time: {req.proposed_time}</p>}
+                        {req.proposed_capacity && <p>Capacity: {req.proposed_capacity}</p>}
+                      </div>
+                    )}
+                    {req.request_type === 'DELETE' && req.reason && (
+                      <p className="text-xs text-zinc-400 mb-3">Reason: {req.reason}</p>
+                    )}
+
+                    <div className="mt-auto flex gap-3">
+                      {rejectingRequest === req.id ? (
+                        <div className="flex-1 space-y-2">
+                          <input
+                            placeholder="Reason for rejection..."
+                            className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
+                            value={rejectReason}
+                            onChange={e => setRejectReason(e.target.value)}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button onClick={() => handleRejectEventRequest(req.id)} className="flex-1 py-2 text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg hover:bg-rose-500/20 transition-colors">Confirm Reject</button>
+                            <button onClick={() => { setRejectingRequest(null); setRejectReason(''); }} className="py-2 px-3 text-xs bg-white/[0.03] text-zinc-400 border border-white/[0.06] rounded-lg hover:text-white transition-colors">Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <button onClick={() => handleApproveEventRequest(req.id)} className="btn-primary flex-1 py-2 text-sm flex items-center justify-center gap-2">
+                            <Check className="w-4 h-4" /> Approve
+                          </button>
+                          <button onClick={() => setRejectingRequest(req.id)} className="btn-danger py-2 px-3">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+            )}
+
             {/* Published Events */}
             <section>
               <div className="flex items-center gap-3 mb-6">
@@ -248,13 +345,68 @@ export const AdminDashboard: React.FC = () => {
                     <span className="text-xs text-zinc-500 mb-2">{event.society_name}</span>
                     <h4 className="text-sm font-semibold text-white mb-3">{event.title}</h4>
                     <div className="mt-auto flex items-center justify-between">
-                      <span className="text-xs text-zinc-500">{event.participant_count} registered</span>
+                      <span className="text-xs text-zinc-500">{Number(event.participant_count)} registered</span>
                       <button onClick={() => handleViewParticipants(event.id)} className="p-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-lg text-zinc-400 hover:text-blue-400 transition-colors">
                         <DbIcon className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ))}
+              </div>
+            </section>
+
+            {/* Venues */}
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-9 h-9 bg-blue-500/10 rounded-lg flex items-center justify-center border border-blue-500/20">
+                  <MapPin className="w-4 h-4 text-blue-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Venues</h3>
+              </div>
+              <div className="glass rounded-xl overflow-hidden">
+                <table className="w-full text-left">
+                  <thead><tr className="border-b border-white/[0.06] bg-white/[0.01]">
+                    <th className="px-6 py-3 text-xs font-medium text-zinc-500">Name</th>
+                    <th className="px-6 py-3 text-xs font-medium text-zinc-500">Location</th>
+                    <th className="px-6 py-3 text-xs font-medium text-zinc-500">Capacity</th>
+                    <th className="px-6 py-3 text-xs font-medium text-zinc-500">Availability</th>
+                    <th className="px-6 py-3 text-xs font-medium text-zinc-500 text-right">Action</th>
+                  </tr></thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {venues.map((v: any) => (
+                      <tr key={v.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="px-6 py-3 text-sm text-white font-medium">{v.name}</td>
+                        <td className="px-6 py-3 text-sm text-zinc-400">{v.location}</td>
+                        <td className="px-6 py-3 text-sm text-zinc-400">{v.capacity}</td>
+                        <td className="px-6 py-3">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium border ${v.availability !== 'NO' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
+                            {v.availability !== 'NO' ? 'Available' : 'Unavailable'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 text-right">
+                          <button
+                            onClick={async () => {
+                              const newAvail = v.availability === 'NO' ? 'YES' : 'NO';
+                              await fetch(`/api/admin/venues/${v.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ availability: newAvail })
+                              });
+                              fetchData();
+                            }}
+                            className={`text-xs px-3 py-1 rounded-lg border transition-colors ${
+                              v.availability !== 'NO'
+                                ? 'text-rose-400 border-rose-500/20 hover:bg-rose-500/10'
+                                : 'text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10'
+                            }`}
+                          >
+                            {v.availability !== 'NO' ? 'Mark Unavailable' : 'Mark Available'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </section>
 
@@ -488,7 +640,7 @@ export const AdminDashboard: React.FC = () => {
                             <td className="px-6 py-3 text-sm text-white font-medium">{ev.title}</td>
                             <td className="px-6 py-3 text-sm text-blue-400 font-medium">{ev.society_name}</td>
                             <td className="px-6 py-3 text-sm text-zinc-400 font-mono">{ev.date}</td>
-                            <td className="px-6 py-3 text-sm text-zinc-400">{ev.participant_count} / {ev.capacity}</td>
+                            <td className="px-6 py-3 text-sm text-zinc-400">{Number(ev.participant_count)} / {ev.capacity}</td>
                             <td className="px-6 py-3">
                               <button onClick={() => handleViewParticipants(ev.id)} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">View</button>
                             </td>

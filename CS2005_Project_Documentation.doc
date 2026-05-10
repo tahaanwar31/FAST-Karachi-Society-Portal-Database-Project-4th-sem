@@ -1,0 +1,721 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<title>CESMS - Project Documentation</title>
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #222; margin: 40px; line-height: 1.6; }
+  h1 { font-size: 26pt; color: #1a1a2e; text-align: center; margin-bottom: 5px; }
+  h2 { font-size: 18pt; color: #16213e; border-bottom: 2px solid #0f3460; padding-bottom: 6px; margin-top: 30px; }
+  h3 { font-size: 14pt; color: #0f3460; margin-top: 20px; }
+  h4 { font-size: 12pt; color: #1a1a2e; margin-top: 14px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0 18px 0; font-size: 10pt; }
+  th { background-color: #1a1a2e; color: white; padding: 8px 12px; text-align: left; font-weight: 600; }
+  td { padding: 7px 12px; border: 1px solid #ccc; vertical-align: top; }
+  tr:nth-child(even) { background-color: #f4f6f9; }
+  .center { text-align: center; }
+  .subtitle { text-align: center; font-size: 14pt; color: #555; margin-top: 2px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 9pt; font-weight: bold; }
+  .badge-blue { background: #e0ecff; color: #0f3460; }
+  .badge-green { background: #d4edda; color: #155724; }
+  .badge-amber { background: #fff3cd; color: #856404; }
+  .badge-red { background: #f8d7da; color: #721c24; }
+  .cover-box { border: 2px solid #1a1a2e; padding: 40px; margin: 60px auto; max-width: 600px; text-align: center; }
+  .cover-box h1 { font-size: 28pt; margin-bottom: 10px; }
+  .cover-box p { font-size: 13pt; margin: 6px 0; }
+  .divider { border: none; border-top: 1px solid #ccc; margin: 30px 0; }
+  code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-family: Consolas, monospace; font-size: 10pt; }
+  ul { margin: 5px 0 10px 20px; }
+  li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ==================== COVER PAGE ==================== -->
+<br/><br/><br/>
+<div class="cover-box">
+  <p style="font-size:11pt; color:#888;">FAST-NUCES Karachi</p>
+  <h1>Campus Event &amp; Society Management System</h1>
+  <p style="font-size:15pt; color:#0f3460; font-weight:bold;">(CESMS)</p>
+  <br/>
+  <p><strong>Course:</strong> CS2005 &mdash; Database Systems</p>
+  <p><strong>Semester:</strong> Spring 2026</p>
+  <br/>
+  <p style="font-size:12pt;"><strong>Group Members:</strong></p>
+  <table style="width:80%; margin:10px auto; font-size:11pt;">
+    <tr><td style="text-align:center; border:none;"><strong>Mohammad Taha Anwar</strong></td><td style="text-align:center; border:none;">24K-3033</td><td style="text-align:center; border:none;"><span class="badge badge-blue">Group Lead</span></td></tr>
+    <tr><td style="text-align:center; border:none;"><strong>Hamza Atif</strong></td><td style="text-align:center; border:none;">24K-0594</td><td style="text-align:center; border:none;"><span class="badge badge-green">Co-Developer</span></td></tr>
+  </table>
+</div>
+
+<br/><br/><br/>
+<hr class="divider"/>
+
+<!-- ==================== TABLE OF CONTENTS ==================== -->
+<h2>Table of Contents</h2>
+<ol style="font-size:11pt; line-height:2;">
+  <li>Introduction &amp; System Overview</li>
+  <li>Technology Stack</li>
+  <li>System Architecture</li>
+  <li>Database Design
+    <ul><li>4.1 Entity-Relationship Overview</li><li>4.2 Complete Table Definitions</li><li>4.3 Foreign Key Relationships</li><li>4.4 CHECK Constraints</li><li>4.5 UNIQUE Constraints</li></ul>
+  </li>
+  <li>Work Distribution</li>
+  <li>Features Implemented</li>
+  <li>API Endpoints</li>
+  <li>User Roles &amp; Permissions</li>
+  <li>How to Run</li>
+</ol>
+
+<hr class="divider"/>
+
+<!-- ==================== 1. INTRODUCTION ==================== -->
+<h2>1. Introduction &amp; System Overview</h2>
+<p>The <strong>Campus Event &amp; Society Management System (CESMS)</strong> is a full-stack web application designed to streamline the management of student societies and their events at FAST-NUCES Karachi. It replaces scattered manual processes with a centralized platform providing role-based access for administrators, society heads, and students.</p>
+
+<h3>Problem Statement</h3>
+<p>In many universities, event management is handled manually or through scattered platforms, leading to poor communication, inefficient registration processes, lack of attendance tracking, and difficulty in gathering feedback. CESMS solves these problems by providing a single unified platform.</p>
+
+<h3>Key Capabilities</h3>
+<ul>
+  <li><strong>Event Management</strong> &mdash; Society heads create events; admins approve before publication</li>
+  <li><strong>Student Registration</strong> &mdash; Students register/unregister with server-side capacity enforcement</li>
+  <li><strong>Attendance Tracking</strong> &mdash; Society heads mark attendance per participant per event</li>
+  <li><strong>Feedback System</strong> &mdash; Students rate (1&ndash;5 stars) and comment after attending events</li>
+  <li><strong>Event Change Requests</strong> &mdash; Society heads request updates/deletes; admins approve/reject with reasons</li>
+  <li><strong>Notifications</strong> &mdash; Society heads receive notifications when their requests are resolved</li>
+  <li><strong>Venue Management</strong> &mdash; Admins manage venue availability; unavailable venues cannot be assigned to events</li>
+  <li><strong>Role-Based Access</strong> &mdash; Three roles: Admin, Society Head, Student &mdash; each with their own dashboard</li>
+  <li><strong>SQL Console</strong> &mdash; Built-in admin SQL console with database inspector for direct queries</li>
+  <li><strong>Search &amp; Filtering</strong> &mdash; Client-side search on the public events page</li>
+</ul>
+
+<hr class="divider"/>
+
+<!-- ==================== 2. TECH STACK ==================== -->
+<h2>2. Technology Stack</h2>
+<table>
+  <tr><th style="width:25%;">Layer</th><th>Technology</th><th style="width:30%;">Details</th></tr>
+  <tr><td><strong>Frontend Framework</strong></td><td>React 19 + TypeScript</td><td>Single-page application with Vite 6</td></tr>
+  <tr><td><strong>Styling</strong></td><td>Tailwind CSS 4</td><td>Utility-first CSS with glass-morphism design</td></tr>
+  <tr><td><strong>Animations</strong></td><td>Framer Motion</td><td>Page transitions, hover effects, staggered lists</td></tr>
+  <tr><td><strong>Icons</strong></td><td>Lucide React</td><td>Consistent icon set across all dashboards</td></tr>
+  <tr><td><strong>Routing</strong></td><td>React Router v7</td><td>Client-side routing with protected routes</td></tr>
+  <tr><td><strong>Backend</strong></td><td>Node.js + Express 4</td><td>RESTful API with TypeScript (tsx runtime)</td></tr>
+  <tr><td><strong>Database (Production)</strong></td><td>PostgreSQL</td><td>Hosted via Neon/Render with SSL</td></tr>
+  <tr><td><strong>Database (Local Dev)</strong></td><td>SQLite (better-sqlite3)</td><td>Zero-config local development</td></tr>
+  <tr><td><strong>Authentication</strong></td><td>Cookie-based sessions</td><td>HTTP-only cookies with 30-day expiry</td></tr>
+  <tr><td><strong>Deployment</strong></td><td>Render</td><td>Single-service deployment (Express serves React)</td></tr>
+</table>
+
+<hr class="divider"/>
+
+<!-- ==================== 3. ARCHITECTURE ==================== -->
+<h2>3. System Architecture</h2>
+<p>The application follows a <strong>monolithic full-stack architecture</strong> where a single Express server serves both the React frontend and the REST API.</p>
+
+<h3>Request Flow</h3>
+<table>
+  <tr><th>Step</th><th>Description</th></tr>
+  <tr><td>1</td><td>Browser sends request to Express server</td></tr>
+  <tr><td>2</td><td>API routes (<code>/api/*</code>) are handled by Express with database queries</td></tr>
+  <tr><td>3</td><td>Protected routes use <code>authMiddleware</code> to verify cookie-based session</td></tr>
+  <tr><td>4</td><td>Role checks (<code>ADMIN</code>, <code>SOCIETY_HEAD</code>, <code>STUDENT</code>) enforce permissions</td></tr>
+  <tr><td>5</td><td>All other routes serve the React SPA (Vite dev middleware or static dist/)</td></tr>
+</table>
+
+<h3>Database Abstraction</h3>
+<p>The server uses a unified database wrapper supporting both PostgreSQL and SQLite. A <code>toPgSql()</code> helper converts SQLite <code>?</code> placeholders to PostgreSQL <code>$1, $2...</code> style. PostgreSQL bigint values are parsed as JavaScript numbers to prevent string concatenation bugs.</p>
+
+<hr class="divider"/>
+
+<!-- ==================== 4. DATABASE DESIGN ==================== -->
+<h2>4. Database Design</h2>
+<p>The database consists of <strong>11 tables</strong> with <strong>14 foreign key relationships</strong>, <strong>12 CHECK constraints</strong>, and <strong>8 UNIQUE constraints</strong>.</p>
+
+<h3>4.1 Entity-Relationship Overview</h3>
+<pre style="background:#f4f6f9; padding:15px; border-radius:5px; font-size:10pt; line-height:1.5; overflow-x:auto;">
+users (id) &lt;─────────────────────────────────────────────────────────────────┐
+  │                                                                           │
+  ├── societies.head_id          (ON DELETE SET NULL)                         │
+  ├── societies.co_head_id      (ON DELETE SET NULL)                         │
+  ├── societies.admin_id         (ON DELETE SET NULL)                         │
+  │                                                                            │
+venues (id)                                                                  │
+  └── events.venue_id           (ON DELETE RESTRICT)                         │
+                                                                             │
+societies (id)                                                               │
+  ├── events.society_id         (ON DELETE CASCADE)                          │
+  ├── heads.society_id          (ON DELETE SET NULL)                         │
+  ├── co_heads.society_id       (ON DELETE SET NULL)                         │
+  └── student_members.society_id (ON DELETE SET NULL)                        │
+                                                                             │
+events (id)                                                                  │
+  ├── registrations.event_id    (ON DELETE CASCADE)                          │
+  ├── feedback.event_id         (ON DELETE CASCADE)                          │
+  └── event_requests.event_id   (ON DELETE CASCADE)                         │
+                                                                             │
+users (id) ──────────────────────────────────────────────────────────────────┘
+  ├── registrations.user_id     (ON DELETE CASCADE)
+  ├── feedback.user_id          (ON DELETE CASCADE)
+  └── event_requests.head_id    (ON DELETE CASCADE)
+</pre>
+
+<h3>4.2 Complete Table Definitions</h3>
+
+<!-- USERS -->
+<h4>Table: <code>users</code> &mdash; Unified authentication table for all roles</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+  <tr><td>id</td><td>TEXT</td><td>PRIMARY KEY</td></tr>
+  <tr><td>name</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>email</td><td>TEXT</td><td>UNIQUE NOT NULL</td></tr>
+  <tr><td>password</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>role</td><td>TEXT</td><td>NOT NULL DEFAULT 'STUDENT', CHECK(role IN ('ADMIN','SOCIETY_HEAD','STUDENT'))</td></tr>
+  <tr><td>roll_no</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>phone</td><td>TEXT</td><td>&mdash;</td></tr>
+</table>
+
+<!-- VENUES -->
+<h4>Table: <code>venues</code> &mdash; Campus event locations</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+  <tr><td>id</td><td>TEXT</td><td>PRIMARY KEY</td></tr>
+  <tr><td>name</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>location</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>capacity</td><td>INTEGER</td><td>NOT NULL, CHECK(capacity > 0)</td></tr>
+  <tr><td>availability</td><td>TEXT</td><td>DEFAULT 'YES', CHECK(availability IN ('YES','NO'))</td></tr>
+</table>
+
+<!-- SOCIETIES -->
+<h4>Table: <code>societies</code> &mdash; Student organizations</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+  <tr><td>id</td><td>TEXT</td><td>PRIMARY KEY</td></tr>
+  <tr><td>name</td><td>TEXT</td><td>NOT NULL UNIQUE</td></tr>
+  <tr><td>description</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>category</td><td>TEXT</td><td>CHECK(category IN ('TECHNICAL','CULTURAL','LITERARY','SPORTS','SOCIAL') OR NULL)</td></tr>
+  <tr><td>established_year</td><td>INTEGER</td><td>&mdash;</td></tr>
+  <tr><td>contact_email</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>vision</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>head_id</td><td>TEXT</td><td>REFERENCES users(id) ON DELETE SET NULL</td></tr>
+  <tr><td>co_head_id</td><td>TEXT</td><td>REFERENCES users(id) ON DELETE SET NULL</td></tr>
+  <tr><td>status</td><td>TEXT</td><td>DEFAULT 'APPROVED', CHECK(status IN ('APPROVED','PENDING','REJECTED'))</td></tr>
+  <tr><td>admin_id</td><td>TEXT</td><td>REFERENCES users(id) ON DELETE SET NULL</td></tr>
+</table>
+
+<!-- EVENTS -->
+<h4>Table: <code>events</code> &mdash; Society events</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+  <tr><td>id</td><td>TEXT</td><td>PRIMARY KEY</td></tr>
+  <tr><td>title</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>description</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>date</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>time</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>capacity</td><td>INTEGER</td><td>NOT NULL, CHECK(capacity > 0)</td></tr>
+  <tr><td>society_id</td><td>TEXT</td><td>NOT NULL, REFERENCES societies(id) ON DELETE CASCADE</td></tr>
+  <tr><td>venue_id</td><td>TEXT</td><td>NOT NULL, REFERENCES venues(id) ON DELETE RESTRICT</td></tr>
+  <tr><td>head_email</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>status</td><td>TEXT</td><td>NOT NULL DEFAULT 'PENDING', CHECK(status IN ('PENDING','PUBLISHED','CANCELLED'))</td></tr>
+  <tr><td>created_at</td><td>TIMESTAMP</td><td>DEFAULT CURRENT_TIMESTAMP</td></tr>
+</table>
+
+<!-- REGISTRATIONS -->
+<h4>Table: <code>registrations</code> &mdash; Student event registrations</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+  <tr><td>id</td><td>TEXT</td><td>PRIMARY KEY</td></tr>
+  <tr><td>user_id</td><td>TEXT</td><td>NOT NULL, REFERENCES users(id) ON DELETE CASCADE</td></tr>
+  <tr><td>event_id</td><td>TEXT</td><td>NOT NULL, REFERENCES events(id) ON DELETE CASCADE</td></tr>
+  <tr><td>status</td><td>TEXT</td><td>NOT NULL DEFAULT 'REGISTERED', CHECK(status IN ('REGISTERED','ATTENDED','CANCELLED'))</td></tr>
+  <tr><td>registered_at</td><td>TIMESTAMP</td><td>DEFAULT CURRENT_TIMESTAMP</td></tr>
+  <tr><td colspan="3"><strong>UNIQUE(user_id, event_id)</strong> &mdash; prevents duplicate registrations</td></tr>
+</table>
+
+<!-- ADMINS -->
+<h4>Table: <code>admins</code> &mdash; Admin registry</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+  <tr><td>id</td><td>TEXT</td><td>PRIMARY KEY</td></tr>
+  <tr><td>name</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>email</td><td>TEXT</td><td>UNIQUE NOT NULL</td></tr>
+  <tr><td>password</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>department</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>access_level</td><td>TEXT</td><td>DEFAULT 'FULL', CHECK(access_level IN ('FULL','LIMITED'))</td></tr>
+  <tr><td>phone</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>created_at</td><td>TIMESTAMP</td><td>DEFAULT CURRENT_TIMESTAMP</td></tr>
+</table>
+
+<!-- HEADS -->
+<h4>Table: <code>heads</code> &mdash; Society head registry</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+  <tr><td>id</td><td>TEXT</td><td>PRIMARY KEY</td></tr>
+  <tr><td>name</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>email</td><td>TEXT</td><td>UNIQUE NOT NULL</td></tr>
+  <tr><td>password</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>society_id</td><td>TEXT</td><td>REFERENCES societies(id) ON DELETE SET NULL</td></tr>
+  <tr><td>department</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>phone</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>tenure_start</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>created_at</td><td>TIMESTAMP</td><td>DEFAULT CURRENT_TIMESTAMP</td></tr>
+</table>
+
+<!-- CO_HEADS -->
+<h4>Table: <code>co_heads</code> &mdash; Society co-head registry</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+  <tr><td>id</td><td>TEXT</td><td>PRIMARY KEY</td></tr>
+  <tr><td>name</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>email</td><td>TEXT</td><td>UNIQUE NOT NULL</td></tr>
+  <tr><td>password</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>society_id</td><td>TEXT</td><td>REFERENCES societies(id) ON DELETE SET NULL</td></tr>
+  <tr><td>department</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>phone</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>tenure_start</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>created_at</td><td>TIMESTAMP</td><td>DEFAULT CURRENT_TIMESTAMP</td></tr>
+</table>
+
+<!-- STUDENT_MEMBERS -->
+<h4>Table: <code>student_members</code> &mdash; Student member registry</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+  <tr><td>id</td><td>TEXT</td><td>PRIMARY KEY</td></tr>
+  <tr><td>name</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>email</td><td>TEXT</td><td>UNIQUE NOT NULL</td></tr>
+  <tr><td>password</td><td>TEXT</td><td>NOT NULL</td></tr>
+  <tr><td>society_id</td><td>TEXT</td><td>REFERENCES societies(id) ON DELETE SET NULL</td></tr>
+  <tr><td>roll_no</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>department</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>semester</td><td>INTEGER</td><td>&mdash;</td></tr>
+  <tr><td>phone</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>joined_date</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>created_at</td><td>TIMESTAMP</td><td>DEFAULT CURRENT_TIMESTAMP</td></tr>
+</table>
+
+<!-- FEEDBACK -->
+<h4>Table: <code>feedback</code> &mdash; Event ratings and comments</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+  <tr><td>id</td><td>TEXT</td><td>PRIMARY KEY</td></tr>
+  <tr><td>user_id</td><td>TEXT</td><td>NOT NULL, REFERENCES users(id) ON DELETE CASCADE</td></tr>
+  <tr><td>event_id</td><td>TEXT</td><td>NOT NULL, REFERENCES events(id) ON DELETE CASCADE</td></tr>
+  <tr><td>rating</td><td>INTEGER</td><td>NOT NULL, CHECK(rating >= 1 AND rating <= 5)</td></tr>
+  <tr><td>comments</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>created_at</td><td>TIMESTAMP</td><td>DEFAULT CURRENT_TIMESTAMP</td></tr>
+  <tr><td colspan="3"><strong>UNIQUE(user_id, event_id)</strong> &mdash; one feedback per user per event</td></tr>
+</table>
+
+<!-- EVENT_REQUESTS -->
+<h4>Table: <code>event_requests</code> &mdash; Society head change requests</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+  <tr><td>id</td><td>TEXT</td><td>PRIMARY KEY</td></tr>
+  <tr><td>event_id</td><td>TEXT</td><td>NOT NULL, REFERENCES events(id) ON DELETE CASCADE</td></tr>
+  <tr><td>head_id</td><td>TEXT</td><td>NOT NULL, REFERENCES users(id) ON DELETE CASCADE</td></tr>
+  <tr><td>request_type</td><td>TEXT</td><td>NOT NULL, CHECK(request_type IN ('UPDATE','DELETE'))</td></tr>
+  <tr><td>status</td><td>TEXT</td><td>NOT NULL DEFAULT 'PENDING', CHECK(status IN ('PENDING','APPROVED','REJECTED'))</td></tr>
+  <tr><td>reason</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>admin_reason</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>proposed_title</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>proposed_description</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>proposed_date</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>proposed_time</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>proposed_capacity</td><td>INTEGER</td><td>&mdash;</td></tr>
+  <tr><td>proposed_venue_id</td><td>TEXT</td><td>&mdash;</td></tr>
+  <tr><td>created_at</td><td>TIMESTAMP</td><td>DEFAULT CURRENT_TIMESTAMP</td></tr>
+  <tr><td>resolved_at</td><td>TIMESTAMP</td><td>&mdash;</td></tr>
+</table>
+
+<h3>4.3 Foreign Key Relationships (14 total)</h3>
+<table>
+  <tr><th>#</th><th>Table</th><th>Column</th><th>References</th><th>ON DELETE</th><th>Why</th></tr>
+  <tr><td>1</td><td>societies</td><td>head_id</td><td>users(id)</td><td>SET NULL</td><td>If user deleted, society keeps its data but loses head assignment</td></tr>
+  <tr><td>2</td><td>societies</td><td>co_head_id</td><td>users(id)</td><td>SET NULL</td><td>Same as above for co-head</td></tr>
+  <tr><td>3</td><td>societies</td><td>admin_id</td><td>users(id)</td><td>SET NULL</td><td>Society loses admin link but survives</td></tr>
+  <tr><td>4</td><td>events</td><td>society_id</td><td>societies(id)</td><td>CASCADE</td><td>Delete society &rarr; delete all its events</td></tr>
+  <tr><td>5</td><td>events</td><td>venue_id</td><td>venues(id)</td><td>RESTRICT</td><td>Cannot delete venue with assigned events</td></tr>
+  <tr><td>6</td><td>registrations</td><td>user_id</td><td>users(id)</td><td>CASCADE</td><td>Delete user &rarr; delete their registrations</td></tr>
+  <tr><td>7</td><td>registrations</td><td>event_id</td><td>events(id)</td><td>CASCADE</td><td>Delete event &rarr; delete its registrations</td></tr>
+  <tr><td>8</td><td>feedback</td><td>user_id</td><td>users(id)</td><td>CASCADE</td><td>Delete user &rarr; delete their feedback</td></tr>
+  <tr><td>9</td><td>feedback</td><td>event_id</td><td>events(id)</td><td>CASCADE</td><td>Delete event &rarr; delete its feedback</td></tr>
+  <tr><td>10</td><td>event_requests</td><td>event_id</td><td>events(id)</td><td>CASCADE</td><td>Delete event &rarr; delete related requests</td></tr>
+  <tr><td>11</td><td>event_requests</td><td>head_id</td><td>users(id)</td><td>CASCADE</td><td>Delete user &rarr; delete their requests</td></tr>
+  <tr><td>12</td><td>heads</td><td>society_id</td><td>societies(id)</td><td>SET NULL</td><td>Delete society &rarr; head record stays (unlinked)</td></tr>
+  <tr><td>13</td><td>co_heads</td><td>society_id</td><td>societies(id)</td><td>SET NULL</td><td>Same as above</td></tr>
+  <tr><td>14</td><td>student_members</td><td>society_id</td><td>societies(id)</td><td>SET NULL</td><td>Same as above</td></tr>
+</table>
+
+<h3>4.4 CHECK Constraints (12 total)</h3>
+<table>
+  <tr><th>#</th><th>Table</th><th>Constraint</th><th>Purpose</th></tr>
+  <tr><td>1</td><td>users</td><td>role IN ('ADMIN','SOCIETY_HEAD','STUDENT')</td><td>Only valid roles allowed</td></tr>
+  <tr><td>2</td><td>venues</td><td>capacity > 0</td><td>Venue must hold at least 1 person</td></tr>
+  <tr><td>3</td><td>venues</td><td>availability IN ('YES','NO')</td><td>Only valid availability values</td></tr>
+  <tr><td>4</td><td>societies</td><td>status IN ('APPROVED','PENDING','REJECTED')</td><td>Only valid approval statuses</td></tr>
+  <tr><td>5</td><td>societies</td><td>category IN ('TECHNICAL','CULTURAL','LITERARY','SPORTS','SOCIAL') or NULL</td><td>Only valid categories</td></tr>
+  <tr><td>6</td><td>events</td><td>status IN ('PENDING','PUBLISHED','CANCELLED')</td><td>Only valid event statuses</td></tr>
+  <tr><td>7</td><td>events</td><td>capacity > 0</td><td>Event must hold at least 1 person</td></tr>
+  <tr><td>8</td><td>registrations</td><td>status IN ('REGISTERED','ATTENDED','CANCELLED')</td><td>Only valid registration states</td></tr>
+  <tr><td>9</td><td>admins</td><td>access_level IN ('FULL','LIMITED')</td><td>Only valid access levels</td></tr>
+  <tr><td>10</td><td>feedback</td><td>rating >= 1 AND rating <= 5</td><td>Star rating must be 1&ndash;5</td></tr>
+  <tr><td>11</td><td>event_requests</td><td>request_type IN ('UPDATE','DELETE')</td><td>Only valid request types</td></tr>
+  <tr><td>12</td><td>event_requests</td><td>status IN ('PENDING','APPROVED','REJECTED')</td><td>Only valid request statuses</td></tr>
+</table>
+
+<h3>4.5 UNIQUE Constraints</h3>
+<table>
+  <tr><th>Table</th><th>Column(s)</th><th>Purpose</th></tr>
+  <tr><td>users</td><td>email</td><td>No two users share an email</td></tr>
+  <tr><td>societies</td><td>name</td><td>No two societies share a name</td></tr>
+  <tr><td>admins</td><td>email</td><td>Unique admin emails</td></tr>
+  <tr><td>heads</td><td>email</td><td>Unique head emails</td></tr>
+  <tr><td>co_heads</td><td>email</td><td>Unique co-head emails</td></tr>
+  <tr><td>student_members</td><td>email</td><td>Unique member emails</td></tr>
+  <tr><td>registrations</td><td>(user_id, event_id)</td><td>Prevents duplicate registrations</td></tr>
+  <tr><td>feedback</td><td>(user_id, event_id)</td><td>One feedback per user per event</td></tr>
+</table>
+
+<hr class="divider"/>
+
+<!-- ==================== 5. WORK DISTRIBUTION ==================== -->
+<h2>5. Work Distribution</h2>
+<p style="font-size:10pt; color:#666;">Work divided equally. Each member owns their modules end-to-end (backend + frontend).</p>
+
+<table>
+  <tr><th style="width:50%; background:#0f3460;">Mohammad Taha Anwar (24K-3033) &mdash; Group Lead</th><th style="width:50%; background:#155724;">Hamza Atif (24K-0594) &mdash; Co-Developer</th></tr>
+  <tr>
+    <td>
+      <h4>Module 1: Project Architecture &amp; Setup</h4>
+      <ul>
+        <li>Initialized project with Vite + React + TypeScript</li>
+        <li>Configured dual-database support (PostgreSQL + SQLite)</li>
+        <li>Set up Express server with Vite middleware integration</li>
+        <li>Database abstraction layer with placeholder conversion</li>
+        <li>PostgreSQL bigint type parser to prevent string bugs</li>
+      </ul>
+
+      <h4>Module 2: Database Schema Design</h4>
+      <ul>
+        <li>Designed all 11 tables with proper column types</li>
+        <li>Defined 14 foreign key relationships with ON DELETE rules</li>
+        <li>Added 12 CHECK constraints for data integrity</li>
+        <li>Added 8 UNIQUE constraints to prevent duplicates</li>
+        <li>Wrote migration system for existing databases (ALTER TABLE)</li>
+        <li>Created seed data with 24 users, 7 venues, 6 societies, 10 events, 32 registrations</li>
+      </ul>
+
+      <h4>Module 3: Authentication &amp; Security</h4>
+      <ul>
+        <li>Cookie-based session with HTTP-only flag and 30-day expiry</li>
+        <li>Auth middleware for protected routes</li>
+        <li>Role-based access control (RBAC) on all endpoints</li>
+        <li>AuthContext provider for React session persistence</li>
+      </ul>
+
+      <h4>Module 4: Admin Module (Full Stack)</h4>
+      <ul>
+        <li>15+ admin API endpoints (CRUD for all entities)</li>
+        <li>Event approval/rejection workflow</li>
+        <li>Event change request review (approve/reject with reasons)</li>
+        <li>Society management (create, delete, assign head/co-head)</li>
+        <li>Venue management (toggle availability, add, delete)</li>
+        <li>User management tables (admins, heads, co-heads, members)</li>
+        <li>SQL Console with live query execution</li>
+        <li>Full database inspector (browse every table)</li>
+        <li>Admin Dashboard GUI with stats, tables, modals</li>
+      </ul>
+
+      <h4>Module 5: Event Request/Approval Workflow</h4>
+      <ul>
+        <li>event_requests table with proposed_* columns</li>
+        <li>Society head submits UPDATE/DELETE requests</li>
+        <li>Admin approves (applies changes) or rejects (with reason)</li>
+        <li>Notification system for society heads</li>
+      </ul>
+
+      <h4>Module 6: Venue Management</h4>
+      <ul>
+        <li>availability field with YES/NO constraint</li>
+        <li>Server-side validation: unavailable venues rejected on event creation</li>
+        <li>Server-side validation: event capacity cannot exceed venue capacity</li>
+        <li>Cannot delete venue with assigned events (RESTRICT FK)</li>
+      </ul>
+
+      <h4>Module 7: Deployment</h4>
+      <ul>
+        <li>Render deployment with PostgreSQL database</li>
+        <li>Environment-based configuration (dev vs production)</li>
+        <li>Production: Express serves built React static files</li>
+      </ul>
+    </td>
+    <td>
+      <h4>Module 1: Frontend Architecture &amp; UI Design</h4>
+      <ul>
+        <li>Designed glass-morphism theme with Tailwind CSS</li>
+        <li>Responsive layout system for all screen sizes</li>
+        <li>Framer Motion animation system (page transitions, stagger, hover)</li>
+        <li>Consistent component design language across all dashboards</li>
+      </ul>
+
+      <h4>Module 2: Landing Page &amp; Public Event Browsing</h4>
+      <ul>
+        <li>Hero section with FAST CLUSTERS branding</li>
+        <li>Live countdown timer on every event card</li>
+        <li>Client-side search filtering (by title and society name)</li>
+        <li>Feature highlights section</li>
+        <li>Footer with developer credits</li>
+      </ul>
+
+      <h4>Module 3: Login System</h4>
+      <ul>
+        <li>Email/password login form with error handling</li>
+        <li>Quick-login demo buttons for 5 pre-configured accounts</li>
+        <li>Session persistence with AuthContext</li>
+        <li>Automatic redirect to role-specific dashboard</li>
+      </ul>
+
+      <h4>Module 4: Student Module (Full Stack)</h4>
+      <ul>
+        <li>Student registration API with capacity enforcement</li>
+        <li>Student unregistration API (sets status to CANCELLED)</li>
+        <li>Re-registration support (CANCELLED &rarr; REGISTERED)</li>
+        <li>Student Dashboard: available events, registered events, attended events</li>
+        <li>Star-rating feedback modal (1&ndash;5 stars + comments)</li>
+        <li>Unregister button on registered events</li>
+      </ul>
+
+      <h4>Module 5: Society Head Module (Full Stack)</h4>
+      <ul>
+        <li>Event creation API with venue availability check</li>
+        <li>Attendance tracking API (mark REGISTERED &rarr; ATTENDED)</li>
+        <li>Feedback viewing API for society head's events</li>
+        <li>Event request submission API (UPDATE/DELETE)</li>
+        <li>Society Head Dashboard: stats, events table, actions</li>
+        <li>Participants modal with attendance toggle per student</li>
+        <li>Feedback viewer modal per event</li>
+        <li>Edit request modal (pre-filled event data)</li>
+        <li>Delete request modal (with reason input)</li>
+        <li>Notification panel for resolved requests</li>
+        <li>Recent feedback overview section</li>
+      </ul>
+
+      <h4>Module 6: Shared Components</h4>
+      <ul>
+        <li>EventCard component with countdown timer, capacity bar, register/full states</li>
+        <li>Navigation bar with mobile drawer</li>
+        <li>AuthContext provider (login, logout, refresh, ProtectedRoute)</li>
+        <li>PrivateRoute wrapper for protected dashboard</li>
+      </ul>
+
+      <h4>Module 7: Testing &amp; Quality Assurance</h4>
+      <ul>
+        <li>Cross-browser testing (Chrome, Firefox, Edge)</li>
+        <li>Mobile responsiveness testing</li>
+        <li>Role-based access verification</li>
+        <li>Data integrity validation across all workflows</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+<hr class="divider"/>
+
+<!-- ==================== 6. FEATURES ==================== -->
+<h2>6. Features Implemented</h2>
+
+<table>
+  <tr><th>#</th><th>Feature</th><th>Description</th><th>Status</th></tr>
+  <tr><td>1</td><td>Event Creation</td><td>Society heads create events with title, description, date, time, capacity, and venue selection. Events start as PENDING.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>2</td><td>Event Approval</td><td>Admin reviews and approves/rejects pending events before they go live.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>3</td><td>Student Registration</td><td>Students register for published events with server-side capacity enforcement. Duplicate registrations prevented by UNIQUE constraint.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>4</td><td>Student Unregistration</td><td>Students can cancel their registration (status set to CANCELLED). Re-registration supported.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>5</td><td>Attendance Tracking</td><td>Society heads view participant lists and toggle attendance (REGISTERED &harr; ATTENDED) per student.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>6</td><td>Feedback System</td><td>Students who attended an event can submit 1&ndash;5 star rating with comments. One feedback per event per student.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>7</td><td>Event Update Requests</td><td>Society heads request event edits. Admin reviews and applies changes on approval.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>8</td><td>Event Delete Requests</td><td>Society heads request event deletion with a reason. Admin approves or rejects with a reason.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>9</td><td>Notifications</td><td>Society heads see notifications when their requests are approved/rejected, including admin reasons.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>10</td><td>Venue Management</td><td>Admins toggle venue availability. Unavailable venues hidden from event creation forms and rejected server-side.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>11</td><td>Venue Capacity Validation</td><td>Event capacity cannot exceed the selected venue's capacity. Enforced server-side.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>12</td><td>Society Management</td><td>Admins create/delete societies, assign head and co-head roles from existing users.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>13</td><td>Search &amp; Filtering</td><td>Public landing page with real-time search by event title or society name.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>14</td><td>SQL Console</td><td>Built-in admin SQL console with query execution and full database inspector.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>15</td><td>Role-Based Dashboards</td><td>Three distinct dashboards with role-specific features and navigation.</td><td><span class="badge badge-green">Done</span></td></tr>
+  <tr><td>16</td><td>Live Countdown</td><td>Event cards show real-time countdown (days, hours, minutes, seconds) to event start.</td><td><span class="badge badge-green">Done</span></td></tr>
+</table>
+
+<hr class="divider"/>
+
+<!-- ==================== 7. API ENDPOINTS ==================== -->
+<h2>7. API Endpoints (48 total)</h2>
+
+<h3>Authentication (3)</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+  <tr><td>POST</td><td>/api/auth/login</td><td>No</td><td>Login with email + password, sets HTTP-only cookie</td></tr>
+  <tr><td>POST</td><td>/api/auth/logout</td><td>No</td><td>Clears session cookie</td></tr>
+  <tr><td>GET</td><td>/api/auth/me</td><td>Cookie</td><td>Returns current user or null</td></tr>
+</table>
+
+<h3>Public Browsing (4)</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+  <tr><td>GET</td><td>/api/events</td><td>No</td><td>All published events with participant count</td></tr>
+  <tr><td>GET</td><td>/api/events/:id</td><td>No</td><td>Single event details</td></tr>
+  <tr><td>GET</td><td>/api/societies</td><td>No</td><td>All societies with head/co-head names</td></tr>
+  <tr><td>GET</td><td>/api/venues</td><td>No</td><td>All venues</td></tr>
+</table>
+
+<h3>Student Actions (4)</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+  <tr><td>POST</td><td>/api/events/:id/register</td><td>Yes</td><td>Register for event (checks capacity, duplicates)</td></tr>
+  <tr><td>POST</td><td>/api/events/:id/unregister</td><td>Yes</td><td>Cancel registration</td></tr>
+  <tr><td>GET</td><td>/api/registrations/my</td><td>Yes</td><td>Get user's registrations (REGISTERED + ATTENDED)</td></tr>
+  <tr><td>GET</td><td>/api/events/:id/participants</td><td>Yes</td><td>List participants for an event</td></tr>
+</table>
+
+<h3>Feedback (3)</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+  <tr><td>POST</td><td>/api/events/:id/feedback</td><td>Yes</td><td>Submit feedback (attended events only, rating 1&ndash;5)</td></tr>
+  <tr><td>GET</td><td>/api/events/:id/feedback</td><td>Yes</td><td>Get all feedback for an event</td></tr>
+  <tr><td>GET</td><td>/api/head/feedback</td><td>Head</td><td>Get all feedback for society head's events</td></tr>
+</table>
+
+<h3>Attendance (2)</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+  <tr><td>POST</td><td>/api/head/mark-attendance</td><td>Head</td><td>Mark selected users as ATTENDED</td></tr>
+  <tr><td>GET</td><td>/api/events/:id/attendance</td><td>Yes</td><td>Get participants with attendance status</td></tr>
+</table>
+
+<h3>Society Head &mdash; Events &amp; Requests (5)</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+  <tr><td>GET</td><td>/api/head/my-events</td><td>Head</td><td>Get society's events with registration count</td></tr>
+  <tr><td>POST</td><td>/api/head/create-event</td><td>Head</td><td>Create event (validates venue availability + capacity)</td></tr>
+  <tr><td>POST</td><td>/api/head/event-request</td><td>Head</td><td>Submit UPDATE or DELETE request for admin review</td></tr>
+  <tr><td>GET</td><td>/api/head/notifications</td><td>Head</td><td>Get resolved request notifications</td></tr>
+  <tr><td>GET</td><td>/api/head/my-event-requests</td><td>Head</td><td>Get all own requests (all statuses)</td></tr>
+</table>
+
+<h3>Admin &mdash; Events (5)</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+  <tr><td>GET</td><td>/api/admin/pending-events</td><td>Admin</td><td>Get all PENDING events</td></tr>
+  <tr><td>POST</td><td>/api/admin/approve-event/:id</td><td>Admin</td><td>Approve event (set PUBLISHED)</td></tr>
+  <tr><td>POST</td><td>/api/admin/reject-event/:id</td><td>Admin</td><td>Reject event (set CANCELLED)</td></tr>
+  <tr><td>GET</td><td>/api/admin/event-requests</td><td>Admin</td><td>Get pending event change requests</td></tr>
+  <tr><td>POST</td><td>/api/admin/approve-event-request/:id</td><td>Admin</td><td>Approve request (applies proposed changes)</td></tr>
+  <tr><td>POST</td><td>/api/admin/reject-event-request/:id</td><td>Admin</td><td>Reject request with admin_reason</td></tr>
+</table>
+
+<h3>Admin &mdash; Societies &amp; Venues (7)</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+  <tr><td>POST</td><td>/api/admin/societies</td><td>Admin</td><td>Create society (auto APPROVED)</td></tr>
+  <tr><td>PATCH</td><td>/api/admin/societies/:id/roles</td><td>Admin</td><td>Assign head_id / co_head_id</td></tr>
+  <tr><td>DELETE</td><td>/api/admin/societies/:id</td><td>Admin</td><td>Delete society</td></tr>
+  <tr><td>PATCH</td><td>/api/admin/venues/:id</td><td>Admin</td><td>Toggle venue availability (YES/NO)</td></tr>
+  <tr><td>POST</td><td>/api/admin/venues</td><td>Admin</td><td>Add new venue</td></tr>
+  <tr><td>DELETE</td><td>/api/admin/venues/:id</td><td>Admin</td><td>Delete venue (only if no events assigned)</td></tr>
+  <tr><td>GET</td><td>/api/admin/users</td><td>Admin</td><td>Get all users</td></tr>
+</table>
+
+<h3>Admin &mdash; Role Registries (12)</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+  <tr><td>GET/POST/DELETE</td><td>/api/admin/admins[/:id]</td><td>Admin</td><td>CRUD for admin records</td></tr>
+  <tr><td>GET/POST/DELETE</td><td>/api/admin/heads[/:id]</td><td>Admin</td><td>CRUD for head records</td></tr>
+  <tr><td>GET/POST/DELETE</td><td>/api/admin/co-heads[/:id]</td><td>Admin</td><td>CRUD for co-head records</td></tr>
+  <tr><td>GET/POST/DELETE</td><td>/api/admin/student-members[/:id]</td><td>Admin</td><td>CRUD for student member records</td></tr>
+</table>
+
+<h3>Admin &mdash; System (4)</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+  <tr><td>GET</td><td>/api/admin/stats</td><td>Admin</td><td>Row counts for all tables</td></tr>
+  <tr><td>GET</td><td>/api/admin/system/inspect</td><td>Admin</td><td>Full database dump (every table, every row)</td></tr>
+  <tr><td>POST</td><td>/api/admin/query</td><td>Admin</td><td>Execute raw SQL query</td></tr>
+</table>
+
+<hr class="divider"/>
+
+<!-- ==================== 8. USER ROLES ==================== -->
+<h2>8. User Roles &amp; Permissions</h2>
+
+<h3>Administrator</h3>
+<table>
+  <tr><th>Capability</th><th>Details</th></tr>
+  <tr><td>Approve/reject events</td><td>Reviews society head event submissions before publication</td></tr>
+  <tr><td>Approve/reject event change requests</td><td>Reviews UPDATE/DELETE requests with reasons for rejection</td></tr>
+  <tr><td>Manage societies</td><td>Create, delete, assign head/co-head</td></tr>
+  <tr><td>Manage venues</td><td>Add, delete, toggle availability</td></tr>
+  <tr><td>Manage users</td><td>View all users; CRUD for admins, heads, co-heads, student members</td></tr>
+  <tr><td>SQL Console</td><td>Execute arbitrary SQL queries and browse entire database</td></tr>
+</table>
+
+<h3>Society Head</h3>
+<table>
+  <tr><th>Capability</th><th>Details</th></tr>
+  <tr><td>Create events</td><td>Submit events for admin approval (only available venues shown)</td></tr>
+  <tr><td>View participants</td><td>See registered students for each event</td></tr>
+  <tr><td>Mark attendance</td><td>Toggle attendance status per participant</td></tr>
+  <tr><td>View feedback</td><td>See ratings and comments for all own events</td></tr>
+  <tr><td>Request event edits</td><td>Submit update requests (admin must approve)</td></tr>
+  <tr><td>Request event deletion</td><td>Submit delete requests with reason (admin must approve)</td></tr>
+  <tr><td>View notifications</td><td>See approved/rejected request resolutions</td></tr>
+</table>
+
+<h3>Student</h3>
+<table>
+  <tr><th>Capability</th><th>Details</th></tr>
+  <tr><td>Browse events</td><td>View all published events on landing page and dashboard</td></tr>
+  <tr><td>Register for events</td><td>One-click registration (capacity enforced server-side)</td></tr>
+  <tr><td>Unregister</td><td>Cancel registration for upcoming events</td></tr>
+  <tr><td>Submit feedback</td><td>Rate (1&ndash;5 stars) and comment on attended events</td></tr>
+  <tr><td>View registered events</td><td>See all current and past registrations</td></tr>
+</table>
+
+<hr class="divider"/>
+
+<!-- ==================== 9. HOW TO RUN ==================== -->
+<h2>9. How to Run</h2>
+
+<h3>Local Development (SQLite)</h3>
+<pre style="background:#f4f6f9; padding:12px; border-radius:5px; font-size:10pt;">
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Open http://localhost:3000
+</pre>
+
+<h3>Production (PostgreSQL)</h3>
+<pre style="background:#f4f6f9; padding:12px; border-radius:5px; font-size:10pt;">
+# Set environment variable
+DATABASE_URL=postgresql://user:pass@host:port/dbname
+
+# Build and start
+npm run build
+npm start
+</pre>
+
+<h3>Demo Accounts</h3>
+<table>
+  <tr><th>Role</th><th>Email</th><th>Password</th></tr>
+  <tr><td>Admin</td><td>admin@nu.edu.pk</td><td>admin123</td></tr>
+  <tr><td>Society Head (Procom)</td><td>headprocom@nu.edu.pk</td><td>pass123</td></tr>
+  <tr><td>Society Head (ACES)</td><td>headaces@nu.edu.pk</td><td>pass123</td></tr>
+  <tr><td>Student (Taha)</td><td>taha@nu.edu.pk</td><td>student123</td></tr>
+  <tr><td>Student (Ali)</td><td>ali.raza@nu.edu.pk</td><td>student123</td></tr>
+</table>
+
+<hr class="divider"/>
+<p style="text-align:center; color:#888; font-size:10pt; margin-top:40px;">CESMS &mdash; Campus Event &amp; Society Management System &mdash; CS2005 Database Systems Project &mdash; Spring 2026</p>
+
+</body>
+</html>

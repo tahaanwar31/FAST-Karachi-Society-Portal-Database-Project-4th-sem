@@ -109,7 +109,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onAction, actionLab
 
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-white">
-            {event.participant_count} <span className="text-zinc-500">/ {event.capacity}</span>
+            {Number(event.participant_count)} <span className="text-zinc-500">/ {event.capacity}</span>
           </span>
 
           {onAction && (
@@ -118,17 +118,17 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onAction, actionLab
                 e.stopPropagation();
                 onAction();
               }}
-              disabled={isRegistered || (event.participant_count >= event.capacity)}
+              disabled={isRegistered || (Number(event.participant_count) >= Number(event.capacity))}
               className={
                 isRegistered
                   ? 'px-4 py-1.5 rounded-lg text-sm font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 cursor-default'
-                  : event.participant_count >= event.capacity
+                  : Number(event.participant_count) >= Number(event.capacity)
                   ? 'px-4 py-1.5 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-500 cursor-not-allowed'
                   : 'btn-primary flex items-center gap-1.5 !py-1.5 !px-4'
               }
             >
-              {isRegistered ? 'Registered' : event.participant_count >= event.capacity ? 'Full' : actionLabel || 'Register'}
-              {!isRegistered && !(event.participant_count >= event.capacity) && <ArrowRight className="w-3.5 h-3.5" />}
+              {isRegistered ? 'Registered' : Number(event.participant_count) >= Number(event.capacity) ? 'Full' : actionLabel || 'Register'}
+              {!isRegistered && !(Number(event.participant_count) >= Number(event.capacity)) && <ArrowRight className="w-3.5 h-3.5" />}
             </button>
           )}
         </div>

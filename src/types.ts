@@ -101,3 +101,35 @@ export interface StudentMember {
   joined_date?: string;
   created_at?: string;
 }
+
+export interface Feedback {
+  id: string;
+  user_id: string;
+  event_id: string;
+  rating: number;
+  comments?: string;
+  created_at?: string;
+  user_name?: string;
+  event_title?: string;
+}
+
+export interface EventRequest {
+  id: string;
+  event_id: string;
+  head_id: string;
+  request_type: 'UPDATE' | 'DELETE';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reason?: string;
+  admin_reason?: string;
+  proposed_title?: string;
+  proposed_description?: string;
+  proposed_date?: string;
+  proposed_time?: string;
+  proposed_capacity?: number;
+  proposed_venue_id?: string;
+  created_at?: string;
+  resolved_at?: string;
+  event_title?: string;
+  head_name?: string;
+  society_name?: string;
+}

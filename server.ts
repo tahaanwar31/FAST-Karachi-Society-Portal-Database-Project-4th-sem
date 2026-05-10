@@ -6,6 +6,9 @@ import { fileURLToPath } from 'url';
 import pg from 'pg';
 import cookieParser from 'cookie-parser';
 
+// Fix PostgreSQL bigint (COUNT*) returning strings instead of numbers
+pg.types.setTypeParser(20, (val: string) => parseInt(val, 10));
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -108,26 +111,34 @@ async function initDb() {
       password TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'STUDENT',
       roll_no TEXT,
-      phone TEXT
+      phone TEXT,
+      CHECK(role IN ('ADMIN', 'SOCIETY_HEAD', 'STUDENT'))
     );
 
     CREATE TABLE IF NOT EXISTS venues (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       location TEXT NOT NULL,
-      capacity INTEGER NOT NULL
+      capacity INTEGER NOT NULL,
+      availability TEXT DEFAULT 'YES',
+      CHECK(capacity > 0),
+      CHECK(availability IN ('YES', 'NO'))
     );
 
     CREATE TABLE IF NOT EXISTS societies (
       id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
+      name TEXT NOT NULL UNIQUE,
       description TEXT,
       category TEXT,
       established_year INTEGER,
       contact_email TEXT,
       vision TEXT,
-      head_id TEXT,
-      co_head_id TEXT
+      head_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      co_head_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      status TEXT DEFAULT 'APPROVED',
+      admin_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      CHECK(status IN ('APPROVED', 'PENDING', 'REJECTED')),
+      CHECK(category IS NULL OR category IN ('TECHNICAL', 'CULTURAL', 'LITERARY', 'SPORTS', 'SOCIAL'))
     );
 
     CREATE TABLE IF NOT EXISTS events (
@@ -137,20 +148,23 @@ async function initDb() {
       date TEXT NOT NULL,
       time TEXT NOT NULL,
       capacity INTEGER NOT NULL,
-      society_id TEXT NOT NULL,
-      venue_id TEXT NOT NULL,
+      society_id TEXT NOT NULL REFERENCES societies(id) ON DELETE CASCADE,
+      venue_id TEXT NOT NULL REFERENCES venues(id) ON DELETE RESTRICT,
       head_email TEXT,
       status TEXT NOT NULL DEFAULT 'PENDING',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CHECK(status IN ('PENDING', 'PUBLISHED', 'CANCELLED')),
+      CHECK(capacity > 0)
     );
 
     CREATE TABLE IF NOT EXISTS registrations (
       id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      event_id TEXT NOT NULL,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
       status TEXT NOT NULL DEFAULT 'REGISTERED',
       registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(user_id, event_id)
+      UNIQUE(user_id, event_id),
+      CHECK(status IN ('REGISTERED', 'ATTENDED', 'CANCELLED'))
     );
 
     CREATE TABLE IF NOT EXISTS admins (
@@ -161,7 +175,8 @@ async function initDb() {
       department TEXT,
       access_level TEXT DEFAULT 'FULL',
       phone TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CHECK(access_level IN ('FULL', 'LIMITED'))
     );
 
     CREATE TABLE IF NOT EXISTS heads (
@@ -169,7 +184,7 @@ async function initDb() {
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      society_id TEXT,
+      society_id TEXT REFERENCES societies(id) ON DELETE SET NULL,
       department TEXT,
       phone TEXT,
       tenure_start TEXT,
@@ -181,7 +196,7 @@ async function initDb() {
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      society_id TEXT,
+      society_id TEXT REFERENCES societies(id) ON DELETE SET NULL,
       department TEXT,
       phone TEXT,
       tenure_start TEXT,
@@ -193,7 +208,7 @@ async function initDb() {
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      society_id TEXT,
+      society_id TEXT REFERENCES societies(id) ON DELETE SET NULL,
       roll_no TEXT,
       department TEXT,
       semester INTEGER,
@@ -201,9 +216,87 @@ async function initDb() {
       joined_date TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS feedback (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+      rating INTEGER NOT NULL,
+      comments TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, event_id),
+      CHECK(rating >= 1 AND rating <= 5)
+    );
+
+    CREATE TABLE IF NOT EXISTS event_requests (
+      id TEXT PRIMARY KEY,
+      event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+      head_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      request_type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      reason TEXT,
+      admin_reason TEXT,
+      proposed_title TEXT,
+      proposed_description TEXT,
+      proposed_date TEXT,
+      proposed_time TEXT,
+      proposed_capacity INTEGER,
+      proposed_venue_id TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      resolved_at TIMESTAMP,
+      CHECK(request_type IN ('UPDATE', 'DELETE')),
+      CHECK(status IN ('PENDING', 'APPROVED', 'REJECTED'))
+    );
   `;
 
   await db.exec(schema);
+
+  // Migration: add new columns to existing tables
+  try { await db.exec("ALTER TABLE societies ADD COLUMN status TEXT DEFAULT 'APPROVED'"); } catch {}
+  try { await db.exec("ALTER TABLE societies ADD COLUMN admin_id TEXT"); } catch {}
+  try { await db.exec("ALTER TABLE venues ADD COLUMN availability TEXT DEFAULT 'YES'"); } catch {}
+
+  // Migration: add foreign key constraints (PostgreSQL)
+  if (isPostgres) {
+    const fkConstraints = [
+      "ALTER TABLE societies ADD CONSTRAINT fk_societies_head FOREIGN KEY (head_id) REFERENCES users(id) ON DELETE SET NULL",
+      "ALTER TABLE societies ADD CONSTRAINT fk_societies_cohead FOREIGN KEY (co_head_id) REFERENCES users(id) ON DELETE SET NULL",
+      "ALTER TABLE societies ADD CONSTRAINT fk_societies_admin FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL",
+      "ALTER TABLE events ADD CONSTRAINT fk_events_society FOREIGN KEY (society_id) REFERENCES societies(id) ON DELETE CASCADE",
+      "ALTER TABLE events ADD CONSTRAINT fk_events_venue FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE RESTRICT",
+      "ALTER TABLE registrations ADD CONSTRAINT fk_regs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+      "ALTER TABLE registrations ADD CONSTRAINT fk_regs_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE",
+      "ALTER TABLE feedback ADD CONSTRAINT fk_fb_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+      "ALTER TABLE feedback ADD CONSTRAINT fk_fb_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE",
+      "ALTER TABLE event_requests ADD CONSTRAINT fk_er_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE",
+      "ALTER TABLE event_requests ADD CONSTRAINT fk_er_head FOREIGN KEY (head_id) REFERENCES users(id) ON DELETE CASCADE",
+      "ALTER TABLE heads ADD CONSTRAINT fk_heads_society FOREIGN KEY (society_id) REFERENCES societies(id) ON DELETE SET NULL",
+      "ALTER TABLE co_heads ADD CONSTRAINT fk_coheads_society FOREIGN KEY (society_id) REFERENCES societies(id) ON DELETE SET NULL",
+      "ALTER TABLE student_members ADD CONSTRAINT fk_sm_society FOREIGN KEY (society_id) REFERENCES societies(id) ON DELETE SET NULL",
+    ];
+    for (const sql of fkConstraints) {
+      try { await db.exec(sql); } catch { /* constraint may already exist */ }
+    }
+
+    // CHECK constraints for data integrity
+    const checkConstraints = [
+      "ALTER TABLE users ADD CONSTRAINT chk_users_role CHECK (role IN ('ADMIN', 'SOCIETY_HEAD', 'STUDENT'))",
+      "ALTER TABLE venues ADD CONSTRAINT chk_venues_capacity CHECK (capacity > 0)",
+      "ALTER TABLE venues ADD CONSTRAINT chk_venues_availability CHECK (availability IN ('YES', 'NO'))",
+      "ALTER TABLE societies ADD CONSTRAINT chk_societies_status CHECK (status IN ('APPROVED', 'PENDING', 'REJECTED'))",
+      "ALTER TABLE societies ADD CONSTRAINT chk_societies_category CHECK (category IS NULL OR category IN ('TECHNICAL', 'CULTURAL', 'LITERARY', 'SPORTS', 'SOCIAL'))",
+      "ALTER TABLE events ADD CONSTRAINT chk_events_status CHECK (status IN ('PENDING', 'PUBLISHED', 'CANCELLED'))",
+      "ALTER TABLE events ADD CONSTRAINT chk_events_capacity CHECK (capacity > 0)",
+      "ALTER TABLE registrations ADD CONSTRAINT chk_regs_status CHECK (status IN ('REGISTERED', 'ATTENDED', 'CANCELLED'))",
+      "ALTER TABLE admins ADD CONSTRAINT chk_admins_access CHECK (access_level IN ('FULL', 'LIMITED'))",
+      "ALTER TABLE feedback ADD CONSTRAINT chk_fb_rating CHECK (rating >= 1 AND rating <= 5)",
+      "ALTER TABLE event_requests ADD CONSTRAINT chk_er_type CHECK (request_type IN ('UPDATE', 'DELETE'))",
+      "ALTER TABLE event_requests ADD CONSTRAINT chk_er_status CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED'))",
+    ];
+    for (const sql of checkConstraints) {
+      try { await db.exec(sql); } catch { /* constraint may already exist */ }
+    }
+  }
 
   // Seed data
   const userCheck = await db.prepare('SELECT count(*) as count FROM users').get();
@@ -247,23 +340,23 @@ async function initDb() {
     await insertUser.run('student-12', 'Ahmed Zubair', 'ahmed.z@nu.edu.pk', 'student123', 'STUDENT', '21K-8642', '0351-2345678');
 
     // --- Venues ---
-    const insertVenue = db.prepare('INSERT INTO venues (id, name, location, capacity) VALUES (?, ?, ?, ?)');
-    await insertVenue.run('v1', 'Main Auditorium', 'Block A, Ground Floor', 500);
-    await insertVenue.run('v2', 'Seminar Hall 1', 'Block B, 1st Floor', 150);
-    await insertVenue.run('v3', 'Seminar Hall 2', 'Block B, 2nd Floor', 120);
-    await insertVenue.run('v4', 'Computer Lab 1', 'Block C, Ground Floor', 60);
-    await insertVenue.run('v5', 'Sports Ground', 'Outdoor Area', 300);
-    await insertVenue.run('v6', 'Conference Room', 'Block A, 3rd Floor', 40);
-    await insertVenue.run('v7', 'Multi-Purpose Hall', 'Block D, Ground Floor', 250);
+    const insertVenue = db.prepare('INSERT INTO venues (id, name, location, capacity, availability) VALUES (?, ?, ?, ?, ?)');
+    await insertVenue.run('v1', 'Main Auditorium', 'Block A, Ground Floor', 500, 'YES');
+    await insertVenue.run('v2', 'Seminar Hall 1', 'Block B, 1st Floor', 150, 'YES');
+    await insertVenue.run('v3', 'Seminar Hall 2', 'Block B, 2nd Floor', 120, 'YES');
+    await insertVenue.run('v4', 'Computer Lab 1', 'Block C, Ground Floor', 60, 'YES');
+    await insertVenue.run('v5', 'Sports Ground', 'Outdoor Area', 300, 'YES');
+    await insertVenue.run('v6', 'Conference Room', 'Block A, 3rd Floor', 40, 'NO');
+    await insertVenue.run('v7', 'Multi-Purpose Hall', 'Block D, Ground Floor', 250, 'YES');
 
     // --- Societies ---
-    const insertSociety = db.prepare('INSERT INTO societies (id, name, description, head_id, co_head_id, category, established_year, contact_email, vision) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    await insertSociety.run('s1', 'Procom', 'Premier computing society organizing Pakistan\'s largest IT event. Fostering innovation, competitive programming, and tech leadership among students.', 'head-1', 'cohead-1', 'TECHNICAL', 1998, 'procom@nu.edu.pk', 'To be the leading platform for technological innovation and computing excellence in Pakistan.');
-    await insertSociety.run('s2', 'ACES', 'Association of Civil Engineering Students. Promoting civil engineering through workshops, industrial visits, and inter-university competitions.', 'head-2', 'cohead-2', 'TECHNICAL', 2002, 'aces@nu.edu.pk', 'Building the future through structural innovation and engineering excellence.');
-    await insertSociety.run('s3', 'NCC', 'NUCES Computing Club. Dedicated to software development, web technologies, AI/ML research, and open source contributions.', 'head-3', 'cohead-3', 'TECHNICAL', 2005, 'ncc@nu.edu.pk', 'Empowering students to build real-world software solutions.');
-    await insertSociety.run('s4', 'Dramatics Club', 'The official dramatics and performing arts society. Organizing theater productions, mime shows, and drama competitions.', 'head-4', 'cohead-4', 'CULTURAL', 2000, 'drama@nu.edu.pk', 'Unleashing creativity through the art of performance.');
-    await insertSociety.run('s5', 'Sports Society', 'Organizing inter-department and inter-university sports tournaments including cricket, football, basketball, and table tennis.', 'head-5', 'cohead-5', 'SPORTS', 1999, 'sports@nu.edu.pk', 'Promoting physical fitness, teamwork, and sportsmanship.');
-    await insertSociety.run('s6', 'Literary Society', 'Fostering literary talent through debates, poetry recitals, essay writing competitions, and publication of the university magazine.', 'head-6', 'cohead-6', 'LITERARY', 2001, 'literary@nu.edu.pk', 'Nurturing the art of expression through words.');
+    const insertSociety = db.prepare('INSERT INTO societies (id, name, description, head_id, co_head_id, category, established_year, contact_email, vision, status, admin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    await insertSociety.run('s1', 'Procom', 'Premier computing society organizing Pakistan\'s largest IT event. Fostering innovation, competitive programming, and tech leadership among students.', 'head-1', 'cohead-1', 'TECHNICAL', 1998, 'procom@nu.edu.pk', 'To be the leading platform for technological innovation and computing excellence in Pakistan.', 'APPROVED', 'admin-1');
+    await insertSociety.run('s2', 'ACES', 'Association of Civil Engineering Students. Promoting civil engineering through workshops, industrial visits, and inter-university competitions.', 'head-2', 'cohead-2', 'TECHNICAL', 2002, 'aces@nu.edu.pk', 'Building the future through structural innovation and engineering excellence.', 'APPROVED', 'admin-1');
+    await insertSociety.run('s3', 'NCC', 'NUCES Computing Club. Dedicated to software development, web technologies, AI/ML research, and open source contributions.', 'head-3', 'cohead-3', 'TECHNICAL', 2005, 'ncc@nu.edu.pk', 'Empowering students to build real-world software solutions.', 'APPROVED', 'admin-1');
+    await insertSociety.run('s4', 'Dramatics Club', 'The official dramatics and performing arts society. Organizing theater productions, mime shows, and drama competitions.', 'head-4', 'cohead-4', 'CULTURAL', 2000, 'drama@nu.edu.pk', 'Unleashing creativity through the art of performance.', 'APPROVED', 'admin-1');
+    await insertSociety.run('s5', 'Sports Society', 'Organizing inter-department and inter-university sports tournaments including cricket, football, basketball, and table tennis.', 'head-5', 'cohead-5', 'SPORTS', 1999, 'sports@nu.edu.pk', 'Promoting physical fitness, teamwork, and sportsmanship.', 'APPROVED', 'admin-1');
+    await insertSociety.run('s6', 'Literary Society', 'Fostering literary talent through debates, poetry recitals, essay writing competitions, and publication of the university magazine.', 'head-6', 'cohead-6', 'LITERARY', 2001, 'literary@nu.edu.pk', 'Nurturing the art of expression through words.', 'APPROVED', 'admin-1');
 
     // --- Events ---
     const insertEvent = db.prepare('INSERT INTO events (id, title, description, date, time, capacity, society_id, venue_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
@@ -312,6 +405,9 @@ async function initDb() {
     await insertReg.run('r30', 'student-7', 'e1', 'REGISTERED');
     await insertReg.run('r31', 'student-6', 'e4', 'REGISTERED');
     await insertReg.run('r32', 'student-4', 'e9', 'REGISTERED');
+
+    // Mark some registrations as ATTENDED for testing feedback
+    await db.prepare("UPDATE registrations SET status = 'ATTENDED' WHERE id IN ('r1', 'r2', 'r3', 'r4', 'r5', 'r14', 'r15', 'r16')").run();
 
     // --- Admins ---
     const insertAdmin = db.prepare('INSERT INTO admins (id, name, email, password, department, access_level, phone) VALUES (?, ?, ?, ?, ?, ?, ?)');
@@ -414,7 +510,7 @@ app.get('/api/societies', async (req, res) => {
 app.get('/api/events', async (req, res) => {
   const events = await db.prepare(`
     SELECT e.*, s.name as society_name, v.name as venue_name, v.location as venue_location,
-      (SELECT COUNT(*) FROM registrations r WHERE r.event_id = e.id AND r.status = 'REGISTERED') as participant_count
+      (SELECT COUNT(*) FROM registrations r JOIN users u ON r.user_id = u.id WHERE r.event_id = e.id AND r.status = 'REGISTERED') as participant_count
     FROM events e
     JOIN societies s ON e.society_id = s.id
     JOIN venues v ON e.venue_id = v.id
@@ -439,8 +535,17 @@ app.post('/api/events/:id/register', authMiddleware, async (req: any, res) => {
   const eventId = req.params.id;
   const userId = req.user.id;
   const existing = await db.prepare('SELECT * FROM registrations WHERE user_id = ? AND event_id = ?').get(userId, eventId);
-  if (existing) return res.status(400).json({ error: 'Already registered' });
-
+  if (existing) {
+    if (existing.status === 'REGISTERED') return res.status(400).json({ error: 'Already registered' });
+    if (existing.status === 'ATTENDED') return res.status(400).json({ error: 'Already attended' });
+    await db.prepare("UPDATE registrations SET status = 'REGISTERED', registered_at = CURRENT_TIMESTAMP WHERE id = ?").run(existing.id);
+    return res.json({ success: true });
+  }
+  // Check capacity
+  const event = await db.prepare('SELECT capacity FROM events WHERE id = ?').get(eventId);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+  const count = await db.prepare("SELECT COUNT(*) as cnt FROM registrations WHERE event_id = ? AND status = 'REGISTERED'").get(eventId);
+  if (count.cnt >= event.capacity) return res.status(400).json({ error: 'Event is full' });
   const id = Math.random().toString(36).substring(2, 11);
   await db.prepare('INSERT INTO registrations (id, user_id, event_id) VALUES (?, ?, ?)').run(id, userId, eventId);
   res.json({ success: true });
@@ -486,9 +591,9 @@ app.post('/api/admin/societies', authMiddleware, async (req: any, res) => {
   const { name, description, category, established_year, contact_email, vision } = req.body;
   const id = Math.random().toString(36).substring(2, 11);
   await db.prepare(`
-    INSERT INTO societies (id, name, description, category, established_year, contact_email, vision) 
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(id, name, description, category, established_year || null, contact_email, vision);
+    INSERT INTO societies (id, name, description, category, established_year, contact_email, vision, status, admin_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'APPROVED', ?)
+  `).run(id, name, description, category, established_year || null, contact_email, vision, req.user.id);
   res.json({ success: true, id });
 });
 
@@ -541,7 +646,7 @@ app.get('/api/head/my-events', authMiddleware, async (req: any, res) => {
     if (req.user.role !== 'SOCIETY_HEAD') return res.status(403).end();
     const events = await db.prepare(`
       SELECT e.*, v.name as venue_name,
-        (SELECT COUNT(*) FROM registrations r WHERE r.event_id = e.id AND r.status = 'REGISTERED') as reg_count
+        (SELECT COUNT(*) FROM registrations r JOIN users u ON r.user_id = u.id WHERE r.event_id = e.id AND r.status = 'REGISTERED') as reg_count
       FROM events e
       JOIN societies s ON e.society_id = s.id
       JOIN venues v ON e.venue_id = v.id
@@ -555,7 +660,13 @@ app.post('/api/head/create-event', authMiddleware, async (req: any, res) => {
     const { title, description, date, time, capacity, venue_id } = req.body;
     const society = await db.prepare('SELECT id FROM societies WHERE head_id = ?').get(req.user.id);
     if (!society) return res.status(400).json({ error: 'No society found' });
-  
+
+    // Validate venue availability and capacity
+    const venue = await db.prepare('SELECT * FROM venues WHERE id = ?').get(venue_id);
+    if (!venue) return res.status(400).json({ error: 'Venue not found' });
+    if (venue.availability !== 'YES') return res.status(400).json({ error: 'This venue is currently unavailable' });
+    if (Number(capacity) > Number(venue.capacity)) return res.status(400).json({ error: `Event capacity (${capacity}) exceeds venue capacity (${venue.capacity})` });
+
     const id = Math.random().toString(36).substring(2, 11);
     await db.prepare('INSERT INTO events (id, title, description, date, time, capacity, society_id, venue_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
       .run(id, title, description, date, time, capacity, society.id, venue_id);
@@ -567,10 +678,38 @@ app.get('/api/venues', async (req, res) => {
     res.json(venues);
 });
 
+// --- Admin Venue Management ---
+app.patch('/api/admin/venues/:id', authMiddleware, async (req: any, res) => {
+    if (req.user.role !== 'ADMIN') return res.status(403).end();
+    const { availability } = req.body;
+    if (!['YES', 'NO'].includes(availability)) return res.status(400).json({ error: 'availability must be YES or NO' });
+    await db.prepare('UPDATE venues SET availability = ? WHERE id = ?').run(availability, req.params.id);
+    res.json({ success: true });
+});
+
+app.post('/api/admin/venues', authMiddleware, async (req: any, res) => {
+    if (req.user.role !== 'ADMIN') return res.status(403).end();
+    const { name, location, capacity } = req.body;
+    if (!name || !location || !capacity) return res.status(400).json({ error: 'Name, location, and capacity are required' });
+    const id = 'v-' + Math.random().toString(36).substring(2, 8);
+    await db.prepare('INSERT INTO venues (id, name, location, capacity, availability) VALUES (?, ?, ?, ?, ?)')
+      .run(id, name, location, capacity, 'YES');
+    res.json({ success: true, id });
+});
+
+app.delete('/api/admin/venues/:id', authMiddleware, async (req: any, res) => {
+    if (req.user.role !== 'ADMIN') return res.status(403).end();
+    // Check if any events use this venue
+    const events = await db.prepare('SELECT id FROM events WHERE venue_id = ?').get(req.params.id);
+    if (events) return res.status(400).json({ error: 'Cannot delete venue with assigned events' });
+    await db.prepare('DELETE FROM venues WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+});
+
 // Student registrations
 app.get('/api/registrations/my', authMiddleware, async (req: any, res) => {
-    const regs = await db.prepare('SELECT event_id FROM registrations WHERE user_id = ? AND status = \'REGISTERED\'').all(req.user.id);
-    res.json(regs.map((r: any) => r.event_id));
+    const regs = await db.prepare("SELECT event_id, status FROM registrations WHERE user_id = ? AND status IN ('REGISTERED', 'ATTENDED')").all(req.user.id);
+    res.json(regs);
 });
 
 // Admin SQL query
@@ -717,6 +856,180 @@ app.delete('/api/admin/student-members/:id', authMiddleware, async (req: any, re
     if (req.user.role !== 'ADMIN') return res.status(403).end();
     await db.prepare('DELETE FROM student_members WHERE id = ?').run(req.params.id);
     res.json({ success: true });
+});
+
+// --- Unregister ---
+app.post('/api/events/:id/unregister', authMiddleware, async (req: any, res) => {
+  const eventId = req.params.id;
+  const userId = req.user.id;
+  const existing = await db.prepare("SELECT * FROM registrations WHERE user_id = ? AND event_id = ? AND status = 'REGISTERED'").get(userId, eventId);
+  if (!existing) return res.status(400).json({ error: 'Not registered' });
+  await db.prepare("UPDATE registrations SET status = 'CANCELLED' WHERE user_id = ? AND event_id = ?").run(userId, eventId);
+  res.json({ success: true });
+});
+
+// --- Feedback ---
+app.post('/api/events/:id/feedback', authMiddleware, async (req: any, res) => {
+  const eventId = req.params.id;
+  const userId = req.user.id;
+  const { rating, comments } = req.body;
+  if (!rating || rating < 1 || rating > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+  const reg = await db.prepare("SELECT * FROM registrations WHERE user_id = ? AND event_id = ? AND status = 'ATTENDED'").get(userId, eventId);
+  if (!reg) return res.status(400).json({ error: 'You can only submit feedback for events you attended' });
+  const existing = await db.prepare('SELECT * FROM feedback WHERE user_id = ? AND event_id = ?').get(userId, eventId);
+  if (existing) return res.status(400).json({ error: 'Feedback already submitted' });
+  const id = Math.random().toString(36).substring(2, 11);
+  await db.prepare('INSERT INTO feedback (id, user_id, event_id, rating, comments) VALUES (?, ?, ?, ?, ?)').run(id, userId, eventId, rating, comments || null);
+  res.json({ success: true });
+});
+
+app.get('/api/events/:id/feedback', authMiddleware, async (req: any, res) => {
+  const feedbacks = await db.prepare(`
+    SELECT f.*, u.name as user_name
+    FROM feedback f
+    JOIN users u ON f.user_id = u.id
+    WHERE f.event_id = ?
+    ORDER BY f.created_at DESC
+  `).all(req.params.id);
+  res.json(feedbacks);
+});
+
+// --- Society Head: Feedback for their events ---
+app.get('/api/head/feedback', authMiddleware, async (req: any, res) => {
+  if (req.user.role !== 'SOCIETY_HEAD') return res.status(403).end();
+  const feedbacks = await db.prepare(`
+    SELECT f.*, u.name as user_name, e.title as event_title
+    FROM feedback f
+    JOIN users u ON f.user_id = u.id
+    JOIN events e ON f.event_id = e.id
+    JOIN societies s ON e.society_id = s.id
+    WHERE s.head_id = ?
+    ORDER BY f.created_at DESC
+  `).all(req.user.id);
+  res.json(feedbacks);
+});
+
+// --- Attendance ---
+app.post('/api/head/mark-attendance', authMiddleware, async (req: any, res) => {
+  if (req.user.role !== 'SOCIETY_HEAD') return res.status(403).end();
+  const { event_id, user_ids } = req.body;
+  if (!event_id || !Array.isArray(user_ids)) return res.status(400).json({ error: 'event_id and user_ids required' });
+  const event = await db.prepare(`
+    SELECT e.* FROM events e
+    JOIN societies s ON e.society_id = s.id
+    WHERE e.id = ? AND s.head_id = ?
+  `).get(event_id, req.user.id);
+  if (!event) return res.status(403).json({ error: 'Not your event' });
+  for (const uid of user_ids) {
+    await db.prepare("UPDATE registrations SET status = 'ATTENDED' WHERE event_id = ? AND user_id = ?").run(event_id, uid);
+  }
+  res.json({ success: true });
+});
+
+app.get('/api/events/:id/attendance', authMiddleware, async (req: any, res) => {
+  const participants = await db.prepare(`
+    SELECT r.status as attendance_status, u.id, u.name, u.email, u.roll_no, u.phone
+    FROM registrations r
+    JOIN users u ON r.user_id = u.id
+    WHERE r.event_id = ?
+  `).all(req.params.id);
+  res.json(participants);
+});
+
+// --- Event Requests (Update/Delete from Society Heads) ---
+app.post('/api/head/event-request', authMiddleware, async (req: any, res) => {
+  if (req.user.role !== 'SOCIETY_HEAD') return res.status(403).end();
+  const { event_id, request_type, reason, proposed_title, proposed_description, proposed_date, proposed_time, proposed_capacity, proposed_venue_id } = req.body;
+  if (!event_id || !request_type) return res.status(400).json({ error: 'event_id and request_type required' });
+  if (!['UPDATE', 'DELETE'].includes(request_type)) return res.status(400).json({ error: 'request_type must be UPDATE or DELETE' });
+  const event = await db.prepare(`
+    SELECT e.* FROM events e
+    JOIN societies s ON e.society_id = s.id
+    WHERE e.id = ? AND s.head_id = ?
+  `).get(event_id, req.user.id);
+  if (!event) return res.status(403).json({ error: 'Not your event' });
+  const id = Math.random().toString(36).substring(2, 11);
+  await db.prepare(`
+    INSERT INTO event_requests (id, event_id, head_id, request_type, reason, proposed_title, proposed_description, proposed_date, proposed_time, proposed_capacity, proposed_venue_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, event_id, req.user.id, request_type, reason || null, proposed_title || null, proposed_description || null, proposed_date || null, proposed_time || null, proposed_capacity || null, proposed_venue_id || null);
+  res.json({ success: true, id });
+});
+
+app.get('/api/admin/event-requests', authMiddleware, async (req: any, res) => {
+  if (req.user.role !== 'ADMIN') return res.status(403).end();
+  const requests = await db.prepare(`
+    SELECT er.*, e.title as event_title, u.name as head_name, s.name as society_name
+    FROM event_requests er
+    JOIN events e ON er.event_id = e.id
+    JOIN users u ON er.head_id = u.id
+    JOIN societies s ON e.society_id = s.id
+    WHERE er.status = 'PENDING'
+    ORDER BY er.created_at DESC
+  `).all();
+  res.json(requests);
+});
+
+app.post('/api/admin/approve-event-request/:id', authMiddleware, async (req: any, res) => {
+  if (req.user.role !== 'ADMIN') return res.status(403).end();
+  const request = await db.prepare('SELECT * FROM event_requests WHERE id = ?').get(req.params.id);
+  if (!request) return res.status(404).json({ error: 'Request not found' });
+  if (request.status !== 'PENDING') return res.status(400).json({ error: 'Request already processed' });
+
+  if (request.request_type === 'DELETE') {
+    await db.prepare('DELETE FROM registrations WHERE event_id = ?').run(request.event_id);
+    await db.prepare('DELETE FROM events WHERE id = ?').run(request.event_id);
+  } else if (request.request_type === 'UPDATE') {
+    const updates: string[] = [];
+    const params: any[] = [];
+    if (request.proposed_title) { updates.push('title = ?'); params.push(request.proposed_title); }
+    if (request.proposed_description) { updates.push('description = ?'); params.push(request.proposed_description); }
+    if (request.proposed_date) { updates.push('date = ?'); params.push(request.proposed_date); }
+    if (request.proposed_time) { updates.push('time = ?'); params.push(request.proposed_time); }
+    if (request.proposed_capacity) { updates.push('capacity = ?'); params.push(request.proposed_capacity); }
+    if (request.proposed_venue_id) { updates.push('venue_id = ?'); params.push(request.proposed_venue_id); }
+    if (updates.length > 0) {
+      params.push(request.event_id);
+      await db.prepare(`UPDATE events SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+    }
+  }
+  await db.prepare("UPDATE event_requests SET status = 'APPROVED', resolved_at = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
+  res.json({ success: true });
+});
+
+app.post('/api/admin/reject-event-request/:id', authMiddleware, async (req: any, res) => {
+  if (req.user.role !== 'ADMIN') return res.status(403).end();
+  const { admin_reason } = req.body;
+  const request = await db.prepare('SELECT * FROM event_requests WHERE id = ?').get(req.params.id);
+  if (!request) return res.status(404).json({ error: 'Request not found' });
+  if (request.status !== 'PENDING') return res.status(400).json({ error: 'Request already processed' });
+  await db.prepare("UPDATE event_requests SET status = 'REJECTED', admin_reason = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?").run(admin_reason || null, req.params.id);
+  res.json({ success: true });
+});
+
+// --- Society Head Notifications ---
+app.get('/api/head/notifications', authMiddleware, async (req: any, res) => {
+  if (req.user.role !== 'SOCIETY_HEAD') return res.status(403).end();
+  const notifications = await db.prepare(`
+    SELECT er.*, e.title as event_title
+    FROM event_requests er
+    JOIN events e ON er.event_id = e.id
+    WHERE er.head_id = ? AND er.status != 'PENDING'
+    ORDER BY er.resolved_at DESC
+  `).all(req.user.id);
+  res.json(notifications);
+});
+
+app.get('/api/head/my-event-requests', authMiddleware, async (req: any, res) => {
+  if (req.user.role !== 'SOCIETY_HEAD') return res.status(403).end();
+  const requests = await db.prepare(`
+    SELECT er.*, e.title as event_title
+    FROM event_requests er
+    JOIN events e ON er.event_id = e.id
+    WHERE er.head_id = ?
+    ORDER BY er.created_at DESC
+  `).all(req.user.id);
+  res.json(requests);
 });
 
 // --- Vite Middleware ---
