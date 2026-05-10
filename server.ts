@@ -97,7 +97,18 @@ if (isPostgres) {
 
 // --- Schema Initialization ---
 async function initDb() {
-  // Create tables one by one — pg.query() can't handle multi-statement strings reliably
+  // Nuclear: drop everything first so a fresh DB reset works cleanly
+  const dropOrder = [
+    'event_requests', 'feedback', 'registrations', 'events',
+    'student_members', 'co_heads', 'heads', 'admins',
+    'societies', 'venues', 'users'
+  ];
+  for (const t of dropOrder) {
+    try { await db.exec(`DROP TABLE IF EXISTS ${t} CASCADE`); } catch { /* ignore */ }
+  }
+  console.log('--- DB: Old tables cleared ---');
+
+  // Create tables one by one
   const tables = [
     `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
